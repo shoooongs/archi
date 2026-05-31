@@ -41,10 +41,13 @@ function AppContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={bgStyle}>
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{ ...bgStyle, transition: 'background-color 0.2s ease' }}
+    >
       {/* MemoList owns the nav bar (All / Published / ⚙️) and settings panel */}
       <div
-        className={`flex flex-col flex-1 overflow-hidden backdrop-blur-sm ${dk ? 'bg-neutral-950/80' : 'bg-white/55'}`}
+        className={`flex flex-col flex-1 overflow-hidden backdrop-blur-sm transition-colors duration-200 ${dk ? 'bg-neutral-950/80' : 'bg-white/55'}`}
         style={contentStyle}
       >
         <MemoList />

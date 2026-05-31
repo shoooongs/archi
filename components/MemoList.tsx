@@ -377,7 +377,7 @@ function MemoRow({
 
 export default function MemoList() {
   const { state, addMemo, updateMemo, updateSettings } = useStore();
-  const { memos, settings } = state;
+  const { memos, settings, isHydrated } = state;
   const dk = settings.darkMode;
 
   // ── View mode & settings panel ────────────────────────────────────────
@@ -500,7 +500,7 @@ export default function MemoList() {
       {/* Nav bar: [ All  Published ........... 🌙  ⚙️ ]
           SettingsPanel renders inside this sticky block so it sticks below
           the tab row when open, without disrupting the scroll container. */}
-      <div className={`sticky top-0 z-10 backdrop-blur-md border-b ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}>
+      <div className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}>
         <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
           {/* Tab buttons */}
           <div className="flex items-center gap-6">
@@ -547,7 +547,7 @@ export default function MemoList() {
 
       <div className="max-w-2xl mx-auto">
 
-        {displayedMemos.length === 0 && !isAdding && (
+        {isHydrated && displayedMemos.length === 0 && !isAdding && (
           <div className="px-5 py-12 text-center">
             <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
               {viewMode === 'PUBLISHED_ONLY' ? '아직 작성된 글이 없어요.' : '첫 생각을 아래에 적어보세요.'}
@@ -555,7 +555,7 @@ export default function MemoList() {
           </div>
         )}
 
-        {displayedMemos.map((memo) => (
+        {isHydrated && displayedMemos.map((memo) => (
           <MemoRow
             key={memo.id}
             memo={memo}
