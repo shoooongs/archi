@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,8 +13,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mind Dump",
+  title: "Archi",
   description: "생각을 그냥 흘려보내지 말고",
+  appleWebApp: {
+    capable: true,
+    title: "Archi",
+    // 상태 바를 반투명하게 해서 콘텐츠가 노치 영역까지 확장되도록
+    statusBarStyle: "black-translucent",
+  },
+};
+
+// viewport와 themeColor는 metadata가 아닌 별도 export로 분리 (Next.js 요구 사항)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  // iPhone 노치·Dynamic Island 영역까지 콘텐츠를 확장
+  viewportFit: "cover",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
