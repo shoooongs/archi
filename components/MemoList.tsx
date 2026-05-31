@@ -500,7 +500,10 @@ export default function MemoList() {
       {/* Nav bar: [ All  Published ........... 🌙  ⚙️ ]
           SettingsPanel renders inside this sticky block so it sticks below
           the tab row when open, without disrupting the scroll container. */}
-      <div className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}>
+      <div
+        className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
           {/* Tab buttons */}
           <div className="flex items-center gap-6">
