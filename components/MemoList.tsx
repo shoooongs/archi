@@ -53,6 +53,15 @@ function SunIcon() {
   );
 }
 
+function SendIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
 type ViewMode = 'ALL' | 'PUBLISHED_ONLY';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -172,7 +181,8 @@ interface MemoRowProps {
   onBodyKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onBodyFocus: (e: FocusEvent<HTMLTextAreaElement>) => void;
   onStartEdit: () => void;
-  onToggleOff: () => void;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
 }
 
 const LONG_PRESS_MS = 600;
@@ -182,15 +192,16 @@ function MemoRow({
   editTitle, editBody, setEditTitle, setEditBody,
   titleRef, bodyRef,
   onEditorBlur, onTitleKeyDown, onBodyKeyDown, onBodyFocus,
-  onStartEdit, onToggleOff,
+  onStartEdit, onSwipeLeft, onSwipeRight,
 }: MemoRowProps) {
   const dk = darkMode;
-  const contentRef = useRef<HTMLDivElement>(null);
-  const actionRef  = useRef<HTMLDivElement>(null);
-  const startXRef  = useRef(0);
-  const startYRef  = useRef(0);
-  const draggingRef = useRef(false);
-  const swipingRef  = useRef(false);
+  const contentRef      = useRef<HTMLDivElement>(null);
+  const rightActionRef  = useRef<HTMLDivElement>(null); // revealed on left swipe
+  const leftActionRef   = useRef<HTMLDivElement>(null); // revealed on right swipe (OFF only)
+  const startXRef       = useRef(0);
+  const startYRef       = useRef(0);
+  const draggingRef     = useRef(false);
+  const swipingRef      = useRef(false);
   const longPressTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressActivated = useRef(false);
   const [isPressing, setIsPressing] = useState(false);
@@ -201,7 +212,13 @@ function MemoRow({
 
   function applyOffset(offset: number) {
     if (contentRef.current) contentRef.current.style.transform = `translateX(${offset}px)`;
-    if (actionRef.current)  actionRef.current.style.width = `${-offset}px`;
+    if (offset < 0) {
+      if (rightActionRef.current) rightActionRef.current.style.width = `${-offset}px`;
+      if (leftActionRef.current)  leftActionRef.current.style.width  = '0px';
+    } else if (offset > 0) {
+      if (leftActionRef.current)  leftActionRef.current.style.width  = `${offset}px`;
+      if (rightActionRef.current) rightActionRef.current.style.width = '0px';
+    }
   }
 
   function springBack() {
@@ -210,9 +227,13 @@ function MemoRow({
       contentRef.current.style.transition = `transform 0.28s ${ease}`;
       contentRef.current.style.transform  = 'translateX(0)';
     }
-    if (actionRef.current) {
-      actionRef.current.style.transition = `width 0.28s ${ease}`;
-      actionRef.current.style.width = '0px';
+    if (rightActionRef.current) {
+      rightActionRef.current.style.transition = `width 0.28s ${ease}`;
+      rightActionRef.current.style.width = '0px';
+    }
+    if (leftActionRef.current) {
+      leftActionRef.current.style.transition = `width 0.28s ${ease}`;
+      leftActionRef.current.style.width = '0px';
     }
   }
 
@@ -231,8 +252,9 @@ function MemoRow({
     longPressActivated.current = false;
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
-    if (contentRef.current) contentRef.current.style.transition = 'none';
-    if (actionRef.current)  actionRef.current.style.transition  = 'none';
+    if (contentRef.current)     contentRef.current.style.transition     = 'none';
+    if (rightActionRef.current) rightActionRef.current.style.transition = 'none';
+    if (leftActionRef.current)  leftActionRef.current.style.transition  = 'none';
     setIsPressing(true);
     longPressTimerRef.current = setTimeout(() => {
       longPressActivated.current = true;
@@ -253,7 +275,9 @@ function MemoRow({
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } else { return; }
     }
-    applyOffset(Math.max(-120, Math.min(0, dx)));
+    // Right swipe only allowed for OFF memos
+    const maxRight = isOff ? 120 : 0;
+    applyOffset(Math.max(-120, Math.min(maxRight, dx)));
   }
 
   function handlePointerUp(e: React.PointerEvent) {
@@ -267,7 +291,8 @@ function MemoRow({
       return;
     }
     if (Math.abs(dx) < 10) { onStartEdit(); return; }
-    if (dx < -60) onToggleOff();
+    if (dx < -60) onSwipeLeft();
+    else if (dx > 60) onSwipeRight();
     springBack();
   }
 
@@ -284,17 +309,33 @@ function MemoRow({
       : `scale-100 ${isOff ? 'opacity-30' : 'opacity-100'}`,
   ].join(' ');
 
+  // Right action panel label (left swipe)
+  const rightActionLabel = isOff ? '삭제하기' : '끄기';
+  // Left action panel label (right swipe — only for OFF memos)
+  const leftActionLabel  = '되살리기';
+
   return (
     <div className={`relative overflow-hidden border-b ${dk ? 'border-white/10' : 'border-black/8'}`}>
 
-      {/* Action reveal panel */}
+      {/* Left action panel — revealed on right swipe (OFF → restore) */}
       <div
-        ref={actionRef}
+        ref={leftActionRef}
+        className={`absolute left-0 top-0 bottom-0 flex items-center justify-start pl-4 overflow-hidden ${dk ? 'bg-white/[0.07]' : 'bg-black/[0.055]'}`}
+        style={{ width: 0 }}
+      >
+        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/50' : 'text-black/40'}`}>
+          {leftActionLabel}
+        </span>
+      </div>
+
+      {/* Right action panel — revealed on left swipe */}
+      <div
+        ref={rightActionRef}
         className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-4 overflow-hidden ${dk ? 'bg-white/[0.07]' : 'bg-black/[0.055]'}`}
         style={{ width: 0 }}
       >
         <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/50' : 'text-black/40'}`}>
-          {isOff ? '되살리기' : '끄기'}
+          {rightActionLabel}
         </span>
       </div>
 
@@ -345,13 +386,12 @@ function MemoRow({
 
           ) : memo.status === 'PUBLISH' ? (
             // ── Published ──
-            // Font size: both title and body inherit the parent (set by settings).
-            // Title is visually distinguished by font-weight only, not size.
+            // Title bold, body same font-size as DUMP memos — no size reduction.
             <>
               <p className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/90' : 'text-black/90'}`}>
                 {memo.title}
               </p>
-              <p className={`mt-1.5 text-[0.9em] leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
+              <p className={`mt-1.5 leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
                 {memo.text}
               </p>
             </>
@@ -376,16 +416,15 @@ function MemoRow({
 // ─── MemoList ────────────────────────────────────────────────────────────────
 
 export default function MemoList() {
-  const { state, addMemo, updateMemo, updateSettings } = useStore();
+  const { state, addMemo, updateMemo, deleteMemo, updateSettings } = useStore();
   const { memos, settings, isHydrated } = state;
   const dk = settings.darkMode;
 
   // ── View mode & settings panel ────────────────────────────────────────
-  const [viewMode, setViewMode]     = useState<ViewMode>('ALL');
+  const [viewMode, setViewMode]         = useState<ViewMode>('ALL');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // ── Add-new row ───────────────────────────────────────────────────────
-  const [isAdding, setIsAdding] = useState(false);
+  // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
   const addRef = useRef<HTMLTextAreaElement>(null);
 
@@ -399,23 +438,32 @@ export default function MemoList() {
 
   // ── Scroll ────────────────────────────────────────────────────────────
   const listRef        = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevLengthRef  = useRef(memos.length);
 
   const scrollToBottom = useCallback((smooth: boolean) => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior),
-      block: 'end',
-    });
+    const el = listRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
   }, []);
 
-  useEffect(() => { scrollToBottom(false); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Scroll to bottom once after hydration (initial load)
+  useEffect(() => {
+    if (isHydrated) scrollToBottom(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated]);
+
+  // Scroll to bottom when a new memo is added
   useEffect(() => {
     if (memos.length > prevLengthRef.current) scrollToBottom(true);
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
+
+  // Scroll to bottom on tab switch
   useEffect(() => {
-    if (viewMode === 'PUBLISHED_ONLY') { setIsAdding(false); setAddDraft(''); }
     scrollToBottom(true);
   }, [viewMode, scrollToBottom]);
 
@@ -427,10 +475,6 @@ export default function MemoList() {
     if (bodyRef.current) autoResize(bodyRef.current);
   }, [editingId]);
 
-  useEffect(() => {
-    if (isAdding && addRef.current) addRef.current.focus();
-  }, [isAdding]);
-
   // ── Filtered memos ────────────────────────────────────────────────────
   const displayedMemos = memos.filter((m) => {
     if (settings.hideOff && m.status === 'OFF') return false;
@@ -440,21 +484,32 @@ export default function MemoList() {
 
   // ── Add-new handlers ──────────────────────────────────────────────────
   function handleAddChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setAddDraft(e.target.value); autoResize(e.target);
+    setAddDraft(e.target.value);
+    autoResize(e.target);
   }
+
+  // Enter always inserts a newline — submit only via the send button.
   function handleAddKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (e.nativeEvent.isComposing) return;
-      e.preventDefault();
-      const trimmed = addDraft.trim();
-      if (trimmed) { addMemo(trimmed); setAddDraft(''); }
+    if (e.key === 'Escape') {
+      setAddDraft('');
+      if (addRef.current) {
+        addRef.current.style.height = 'auto';
+        addRef.current.blur();
+      }
     }
-    if (e.key === 'Escape') { setIsAdding(false); setAddDraft(''); }
   }
-  function handleAddBlur() {
+
+  function handleSend() {
     const trimmed = addDraft.trim();
-    if (trimmed) addMemo(trimmed);
-    setAddDraft(''); setIsAdding(false);
+    if (!trimmed) return;
+    addMemo(trimmed);
+    setAddDraft('');
+    requestAnimationFrame(() => {
+      if (addRef.current) {
+        autoResize(addRef.current);
+        addRef.current.focus();
+      }
+    });
   }
 
   // ── Edit handlers ─────────────────────────────────────────────────────
@@ -493,138 +548,150 @@ export default function MemoList() {
     el.setSelectionRange(el.value.length, el.value.length);
   }
 
+  const hasContent = addDraft.trim().length > 0;
+
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div ref={listRef} className="flex-1 overflow-y-auto">
+    <div className="flex flex-col flex-1 overflow-hidden">
 
-      {/* Nav bar: [ All  Published ........... 🌙  ⚙️ ]
-          SettingsPanel renders inside this sticky block so it sticks below
-          the tab row when open, without disrupting the scroll container. */}
-      <div
-        className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
-      >
-        <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
-          {/* Tab buttons */}
-          <div className="flex items-center gap-6">
-            {(['ALL', 'PUBLISHED_ONLY'] as ViewMode[]).map((mode) => {
-              const label  = mode === 'ALL' ? 'All' : 'Published';
-              const active = viewMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={[
-                    'text-xs tracking-wide transition-all duration-200 pb-px',
-                    active
-                      ? `font-semibold border-b ${dk ? 'text-white/80 border-white/55' : 'text-black/75 border-black/50'}`
-                      : `font-normal border-b border-transparent ${dk ? 'text-white/35 hover:text-white/60' : 'text-black/30 hover:text-black/50'}`,
-                  ].join(' ')}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+      {/* ── Scrollable timeline ─────────────────────────────────────── */}
+      <div ref={listRef} className="flex-1 overflow-y-auto">
 
-          {/* Dark mode toggle + gear — pushed to the far right */}
-          <div className="ml-auto flex items-center gap-0.5">
-            <button
-              onClick={() => updateSettings({ darkMode: !dk })}
-              aria-label={dk ? '라이트 모드로 전환' : '다크 모드로 전환'}
-              className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/45 hover:text-white/80 hover:bg-white/10' : 'text-black/30 hover:text-black/60 hover:bg-black/5'}`}
-            >
-              {dk ? <SunIcon /> : <MoonIcon />}
-            </button>
-            <button
-              onClick={() => setSettingsOpen((v) => !v)}
-              aria-label={settingsOpen ? '설정 닫기' : '설정 열기'}
-              className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/5'}`}
-            >
-              <GearIcon open={settingsOpen} />
-            </button>
-          </div>
-        </div>
-        {settingsOpen && <SettingsPanel />}
-      </div>
-
-      <div className="max-w-2xl mx-auto">
-
-        {isHydrated && displayedMemos.length === 0 && !isAdding && (
-          <div className="px-5 py-12 text-center">
-            <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-              {viewMode === 'PUBLISHED_ONLY' ? '아직 작성된 글이 없어요.' : '첫 생각을 아래에 적어보세요.'}
-            </p>
-          </div>
-        )}
-
-        {isHydrated && displayedMemos.map((memo) => (
-          <MemoRow
-            key={memo.id}
-            memo={memo}
-            fontFamily={settings.fontFamily}
-            darkMode={dk}
-            isEditing={editingId === memo.id}
-            editTitle={editTitle}
-            editBody={editBody}
-            setEditTitle={setEditTitle}
-            setEditBody={setEditBody}
-            titleRef={titleRef as RefObject<HTMLInputElement>}
-            bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
-            onEditorBlur={handleEditorBlur}
-            onTitleKeyDown={handleTitleKeyDown}
-            onBodyKeyDown={handleBodyKeyDown}
-            onBodyFocus={handleBodyFocus}
-            onStartEdit={() => startEdit(memo.id, memo.title, memo.text)}
-            onToggleOff={() => {
-              const next = memo.status === 'OFF'
-                ? (memo.title ? 'PUBLISH' : 'DUMP')
-                : 'OFF';
-              updateMemo(memo.id, { status: next });
-            }}
-          />
-        ))}
-
-        {/* Add-new row — fades out in PUBLISHED_ONLY (magazine) mode */}
+        {/* Nav bar */}
         <div
-          className={[
-            'overflow-hidden transition-all duration-300 ease-in-out',
-            viewMode === 'PUBLISHED_ONLY'
-              ? 'max-h-0 opacity-0 pointer-events-none'
-              : 'max-h-48 opacity-100',
-          ].join(' ')}
+          className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div
-            className="px-5 py-5 cursor-text"
-            onClick={!isAdding ? () => setIsAdding(true) : undefined}
-          >
-            {isAdding ? (
-              <textarea
-                ref={addRef}
-                rows={1}
-                value={addDraft}
-                onChange={handleAddChange}
-                onKeyDown={handleAddKeyDown}
-                onBlur={handleAddBlur}
-                onClick={(e) => e.stopPropagation()}
-                {...INPUT_GUARD}
-                placeholder=""
-                spellCheck={false}
-                autoComplete="off"
-                className={`w-full resize-none overflow-hidden bg-transparent outline-none leading-relaxed ${dk ? 'text-white/80' : 'text-black/80'}`}
-              />
-            ) : (
-              <span className={`leading-relaxed select-none ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                + 새로운 생각 적기...
-              </span>
-            )}
+          <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
+            <div className="flex items-center gap-6">
+              {(['ALL', 'PUBLISHED_ONLY'] as ViewMode[]).map((mode) => {
+                const label  = mode === 'ALL' ? 'All' : 'Published';
+                const active = viewMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={[
+                      'text-xs tracking-wide transition-all duration-200 pb-px',
+                      active
+                        ? `font-semibold border-b ${dk ? 'text-white/80 border-white/55' : 'text-black/75 border-black/50'}`
+                        : `font-normal border-b border-transparent ${dk ? 'text-white/35 hover:text-white/60' : 'text-black/30 hover:text-black/50'}`,
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="ml-auto flex items-center gap-0.5">
+              <button
+                onClick={() => updateSettings({ darkMode: !dk })}
+                aria-label={dk ? '라이트 모드로 전환' : '다크 모드로 전환'}
+                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/45 hover:text-white/80 hover:bg-white/10' : 'text-black/30 hover:text-black/60 hover:bg-black/5'}`}
+              >
+                {dk ? <SunIcon /> : <MoonIcon />}
+              </button>
+              <button
+                onClick={() => setSettingsOpen((v) => !v)}
+                aria-label={settingsOpen ? '설정 닫기' : '설정 열기'}
+                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/5'}`}
+              >
+                <GearIcon open={settingsOpen} />
+              </button>
+            </div>
           </div>
+          {settingsOpen && <SettingsPanel />}
         </div>
 
-        {/* Sentinel: scrollIntoView targets this to land at the very bottom */}
-        <div ref={messagesEndRef} />
+        <div className="max-w-2xl mx-auto">
 
+          {isHydrated && displayedMemos.length === 0 && (
+            <div className="px-5 py-12 text-center">
+              <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                {viewMode === 'PUBLISHED_ONLY' ? '아직 작성된 글이 없어요.' : '첫 생각을 아래에 적어보세요.'}
+              </p>
+            </div>
+          )}
+
+          {isHydrated && displayedMemos.map((memo) => (
+            <MemoRow
+              key={memo.id}
+              memo={memo}
+              fontFamily={settings.fontFamily}
+              darkMode={dk}
+              isEditing={editingId === memo.id}
+              editTitle={editTitle}
+              editBody={editBody}
+              setEditTitle={setEditTitle}
+              setEditBody={setEditBody}
+              titleRef={titleRef as RefObject<HTMLInputElement>}
+              bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
+              onEditorBlur={handleEditorBlur}
+              onTitleKeyDown={handleTitleKeyDown}
+              onBodyKeyDown={handleBodyKeyDown}
+              onBodyFocus={handleBodyFocus}
+              onStartEdit={() => startEdit(memo.id, memo.title, memo.text)}
+              onSwipeLeft={() => {
+                if (memo.status === 'OFF') {
+                  deleteMemo(memo.id);
+                } else {
+                  updateMemo(memo.id, { status: 'OFF' });
+                }
+              }}
+              onSwipeRight={() => {
+                if (memo.status === 'OFF') {
+                  updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
+                }
+              }}
+            />
+          ))}
+
+          {/* Sentinel for scroll-to-bottom */}
+          <div className="h-2" />
+        </div>
       </div>
+
+      {/* ── Fixed input bar ─────────────────────────────────────────── */}
+      {viewMode === 'ALL' && (
+        <div
+          className={`border-t transition-colors duration-200 ${dk ? 'bg-neutral-900/95 border-white/10' : 'bg-white/95 border-black/8'}`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}
+        >
+          <div className="max-w-2xl mx-auto px-5 py-3 flex items-end gap-3">
+            <textarea
+              ref={addRef}
+              rows={1}
+              value={addDraft}
+              onChange={handleAddChange}
+              onKeyDown={handleAddKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              {...INPUT_GUARD}
+              placeholder="새로운 생각 적기..."
+              spellCheck={false}
+              autoComplete="off"
+              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] max-h-40 ${dk ? 'text-white/80 placeholder:text-white/25' : 'text-black/80 placeholder:text-black/25'}`}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!hasContent}
+              aria-label="등록"
+              className={[
+                'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150',
+                hasContent
+                  ? dk
+                    ? 'bg-white/15 text-white/80 hover:bg-white/25'
+                    : 'bg-black/10 text-black/70 hover:bg-black/15'
+                  : dk
+                    ? 'text-white/20'
+                    : 'text-black/20',
+              ].join(' ')}
+            >
+              <SendIcon />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
