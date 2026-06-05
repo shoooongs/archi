@@ -503,14 +503,14 @@ export default function MemoList() {
   function pressCard() {
     const el = inputCardRef.current;
     if (!el) return;
-    el.style.transition = 'transform 0.12s cubic-bezier(0.4, 0, 0.6, 1)';
-    el.style.transform  = 'translateY(2.5px) scale(0.982)';
+    el.style.transition = 'transform 0.08s cubic-bezier(0.4, 0, 0.6, 1)';
+    el.style.transform  = 'translateY(1.2px) scale(0.993)';
   }
 
   function releaseCard() {
     const el = inputCardRef.current;
     if (!el) return;
-    el.style.transition = 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    el.style.transition = 'transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)';
     el.style.transform  = 'translateY(0) scale(1)';
   }
 
@@ -551,7 +551,7 @@ export default function MemoList() {
     if (typingEndTimer.current) clearTimeout(typingEndTimer.current);
     isTypingRef.current = false;
     pressCard();
-    setTimeout(releaseCard, 130);
+    setTimeout(releaseCard, 100);
     addMemo(trimmed);
     setAddDraft('');
     requestAnimationFrame(() => {
@@ -717,8 +717,8 @@ export default function MemoList() {
               'flex items-end gap-3 px-4 py-3 rounded-2xl',
               'border backdrop-blur-2xl will-change-transform',
               dk
-                ? 'bg-black/20 border-white/12 shadow-[0_4px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.07)]'
-                : 'bg-white/28 border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)]',
+                ? 'bg-white/5 border-white/10 shadow-[0_2px_20px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]'
+                : 'bg-white/12 border-white/50 shadow-[0_2px_16px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.8)]',
             ].join(' ')}
           >
             <textarea
