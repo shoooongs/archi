@@ -510,7 +510,7 @@ export default function MemoList() {
   function releaseCard() {
     const el = inputCardRef.current;
     if (!el) return;
-    el.style.transition = 'transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    el.style.transition = 'transform 0.05s cubic-bezier(0.34, 1.56, 0.64, 1)';
     el.style.transform  = 'translateY(0) scale(1)';
   }
 
@@ -717,8 +717,8 @@ export default function MemoList() {
               'flex items-end gap-3 px-4 py-3 rounded-2xl',
               'border backdrop-blur-2xl will-change-transform',
               dk
-                ? 'bg-black/5 border-white/8 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.04)]'
-                : 'bg-white/5 border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
+                ? 'bg-transparent border-white/40 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]'
+                : 'bg-transparent border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
             ].join(' ')}
           >
             <textarea
