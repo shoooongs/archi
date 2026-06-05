@@ -670,7 +670,7 @@ export default function MemoList() {
               placeholder="새로운 생각 적기..."
               spellCheck={false}
               autoComplete="off"
-              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] max-h-40 ${dk ? 'text-white/80 placeholder:text-white/25' : 'text-black/80 placeholder:text-black/25'}`}
+              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] ${dk ? 'text-white/80 placeholder:text-white/25' : 'text-black/80 placeholder:text-black/25'}`}
             />
             <button
               type="button"
