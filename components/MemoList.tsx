@@ -320,10 +320,10 @@ function MemoRow({
       {/* Left action panel — revealed on right swipe (OFF → restore) */}
       <div
         ref={leftActionRef}
-        className={`absolute left-0 top-0 bottom-0 flex items-center justify-start pl-4 overflow-hidden ${dk ? 'bg-white/[0.07]' : 'bg-black/[0.055]'}`}
+        className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden"
         style={{ width: 0 }}
       >
-        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/50' : 'text-black/40'}`}>
+        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/45' : 'text-black/35'}`}>
           {leftActionLabel}
         </span>
       </div>
@@ -331,10 +331,10 @@ function MemoRow({
       {/* Right action panel — revealed on left swipe */}
       <div
         ref={rightActionRef}
-        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-4 overflow-hidden ${dk ? 'bg-white/[0.07]' : 'bg-black/[0.055]'}`}
+        className="absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden"
         style={{ width: 0 }}
       >
-        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/50' : 'text-black/40'}`}>
+        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${isOff ? 'text-red-500' : (dk ? 'text-white/45' : 'text-black/35')}`}>
           {rightActionLabel}
         </span>
       </div>
