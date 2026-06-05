@@ -440,9 +440,10 @@ export default function MemoList() {
 
   // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
-  const addRef       = useRef<HTMLTextAreaElement>(null);
-  const inputCardRef = useRef<HTMLDivElement>(null);
-  const typingAnimRef = useRef<Animation | null>(null);
+  const addRef           = useRef<HTMLTextAreaElement>(null);
+  const inputCardRef     = useRef<HTMLDivElement>(null);
+  const isTypingRef      = useRef(false);
+  const typingEndTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Publish editor ────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -498,30 +499,38 @@ export default function MemoList() {
     return true;
   });
 
-  // ── Typing spring animation ───────────────────────────────────────────
-  function triggerTypingAnimation() {
+  // ── Card press / release ─────────────────────────────────────────────
+  function pressCard() {
     const el = inputCardRef.current;
     if (!el) return;
-    try {
-      typingAnimRef.current?.cancel();
-      typingAnimRef.current = el.animate(
-        [
-          { transform: 'translateY(0) scale(1)',          offset: 0    },
-          { transform: 'translateY(2px) scale(0.983)',    offset: 0.18 },
-          { transform: 'translateY(-0.8px) scale(1.005)', offset: 0.55 },
-          { transform: 'translateY(0.2px) scale(0.999)', offset: 0.80 },
-          { transform: 'translateY(0) scale(1)',          offset: 1    },
-        ],
-        { duration: 280, easing: 'linear', fill: 'none' },
-      );
-    } catch { /* Web Animations API unavailable */ }
+    el.style.transition = 'transform 0.12s cubic-bezier(0.4, 0, 0.6, 1)';
+    el.style.transform  = 'translateY(2.5px) scale(0.982)';
+  }
+
+  function releaseCard() {
+    const el = inputCardRef.current;
+    if (!el) return;
+    el.style.transition = 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    el.style.transform  = 'translateY(0) scale(1)';
+  }
+
+  function triggerTypingState() {
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      pressCard();
+    }
+    if (typingEndTimer.current) clearTimeout(typingEndTimer.current);
+    typingEndTimer.current = setTimeout(() => {
+      isTypingRef.current = false;
+      releaseCard();
+    }, 700);
   }
 
   // ── Add-new handlers ──────────────────────────────────────────────────
   function handleAddChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setAddDraft(e.target.value);
     autoResize(e.target);
-    triggerTypingAnimation();
+    triggerTypingState();
   }
 
   // Enter always inserts a newline — submit only via the send button.
@@ -538,6 +547,11 @@ export default function MemoList() {
   function handleSend() {
     const trimmed = addDraft.trim();
     if (!trimmed) return;
+    // Clear typing debounce and animate
+    if (typingEndTimer.current) clearTimeout(typingEndTimer.current);
+    isTypingRef.current = false;
+    pressCard();
+    setTimeout(releaseCard, 130);
     addMemo(trimmed);
     setAddDraft('');
     requestAnimationFrame(() => {
@@ -701,10 +715,10 @@ export default function MemoList() {
             ref={inputCardRef}
             className={[
               'flex items-end gap-3 px-4 py-3 rounded-2xl',
-              'border backdrop-blur-xl will-change-transform',
+              'border backdrop-blur-2xl will-change-transform',
               dk
-                ? 'bg-white/8 border-white/15 shadow-[0_4px_30px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]'
-                : 'bg-white/65 border-white/70 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]',
+                ? 'bg-black/20 border-white/12 shadow-[0_4px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.07)]'
+                : 'bg-white/28 border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)]',
             ].join(' ')}
           >
             <textarea
