@@ -500,11 +500,13 @@ export default function MemoList() {
   });
 
   // ── Card press / release ─────────────────────────────────────────────
-  function pressCard() {
+  function pressCard(depth: 'light' | 'strong' = 'light') {
     const el = inputCardRef.current;
     if (!el) return;
     el.style.transition = 'transform 0.08s cubic-bezier(0.4, 0, 0.6, 1)';
-    el.style.transform  = 'translateY(1.2px) scale(0.993)';
+    el.style.transform  = depth === 'strong'
+      ? 'translateY(3px) scale(0.978)'
+      : 'translateY(1.2px) scale(0.993)';
   }
 
   function releaseCard() {
@@ -550,8 +552,8 @@ export default function MemoList() {
     // Clear typing debounce and animate
     if (typingEndTimer.current) clearTimeout(typingEndTimer.current);
     isTypingRef.current = false;
-    pressCard();
-    setTimeout(releaseCard, 100);
+    pressCard('strong');
+    setTimeout(releaseCard, 120);
     addMemo(trimmed);
     setAddDraft('');
     requestAnimationFrame(() => {
