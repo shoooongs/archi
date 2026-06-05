@@ -213,11 +213,23 @@ function MemoRow({
   function applyOffset(offset: number) {
     if (contentRef.current) contentRef.current.style.transform = `translateX(${offset}px)`;
     if (offset < 0) {
-      if (rightActionRef.current) rightActionRef.current.style.width = `${-offset}px`;
-      if (leftActionRef.current)  leftActionRef.current.style.width  = '0px';
+      if (rightActionRef.current) {
+        rightActionRef.current.style.width   = `${-offset}px`;
+        rightActionRef.current.style.opacity = '1';
+      }
+      if (leftActionRef.current) {
+        leftActionRef.current.style.width   = '0px';
+        leftActionRef.current.style.opacity = '0';
+      }
     } else if (offset > 0) {
-      if (leftActionRef.current)  leftActionRef.current.style.width  = `${offset}px`;
-      if (rightActionRef.current) rightActionRef.current.style.width = '0px';
+      if (leftActionRef.current) {
+        leftActionRef.current.style.width   = `${offset}px`;
+        leftActionRef.current.style.opacity = '1';
+      }
+      if (rightActionRef.current) {
+        rightActionRef.current.style.width   = '0px';
+        rightActionRef.current.style.opacity = '0';
+      }
     }
   }
 
@@ -228,12 +240,14 @@ function MemoRow({
       contentRef.current.style.transform  = 'translateX(0)';
     }
     if (rightActionRef.current) {
-      rightActionRef.current.style.transition = `width 0.28s ${ease}`;
-      rightActionRef.current.style.width = '0px';
+      rightActionRef.current.style.transition = `width 0.28s ${ease}, opacity 0.28s ${ease}`;
+      rightActionRef.current.style.width   = '0px';
+      rightActionRef.current.style.opacity = '0';
     }
     if (leftActionRef.current) {
-      leftActionRef.current.style.transition = `width 0.28s ${ease}`;
-      leftActionRef.current.style.width = '0px';
+      leftActionRef.current.style.transition = `width 0.28s ${ease}, opacity 0.28s ${ease}`;
+      leftActionRef.current.style.width   = '0px';
+      leftActionRef.current.style.opacity = '0';
     }
   }
 
@@ -321,7 +335,7 @@ function MemoRow({
       <div
         ref={leftActionRef}
         className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden bg-emerald-500"
-        style={{ width: 0 }}
+        style={{ width: 0, opacity: 0 }}
       >
         <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
           {leftActionLabel}
@@ -332,7 +346,7 @@ function MemoRow({
       <div
         ref={rightActionRef}
         className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${isOff ? 'bg-red-500' : 'bg-neutral-400'}`}
-        style={{ width: 0 }}
+        style={{ width: 0, opacity: 0 }}
       >
         <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
           {rightActionLabel}
