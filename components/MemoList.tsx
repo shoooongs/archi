@@ -440,7 +440,9 @@ export default function MemoList() {
 
   // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
-  const addRef = useRef<HTMLTextAreaElement>(null);
+  const addRef       = useRef<HTMLTextAreaElement>(null);
+  const inputCardRef = useRef<HTMLDivElement>(null);
+  const typingAnimRef = useRef<Animation | null>(null);
 
   // ── Publish editor ────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -496,10 +498,30 @@ export default function MemoList() {
     return true;
   });
 
+  // ── Typing spring animation ───────────────────────────────────────────
+  function triggerTypingAnimation() {
+    const el = inputCardRef.current;
+    if (!el) return;
+    try {
+      typingAnimRef.current?.cancel();
+      typingAnimRef.current = el.animate(
+        [
+          { transform: 'translateY(0) scale(1)',          offset: 0    },
+          { transform: 'translateY(2px) scale(0.983)',    offset: 0.18 },
+          { transform: 'translateY(-0.8px) scale(1.005)', offset: 0.55 },
+          { transform: 'translateY(0.2px) scale(0.999)', offset: 0.80 },
+          { transform: 'translateY(0) scale(1)',          offset: 1    },
+        ],
+        { duration: 280, easing: 'linear', fill: 'none' },
+      );
+    } catch { /* Web Animations API unavailable */ }
+  }
+
   // ── Add-new handlers ──────────────────────────────────────────────────
   function handleAddChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setAddDraft(e.target.value);
     autoResize(e.target);
+    triggerTypingAnimation();
   }
 
   // Enter always inserts a newline — submit only via the send button.
@@ -666,13 +688,25 @@ export default function MemoList() {
         </div>
       </div>
 
-      {/* ── Fixed input bar ─────────────────────────────────────────── */}
+      {/* ── Floating glassmorphism input card ───────────────────────── */}
       {viewMode === 'ALL' && (
         <div
-          className={`border-t transition-colors duration-200 ${dk ? 'bg-neutral-900/95 border-white/10' : 'bg-white/95 border-black/8'}`}
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}
+          className="max-w-2xl mx-auto w-full px-4"
+          style={{
+            paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
+            paddingTop: '0.5rem',
+          }}
         >
-          <div className="max-w-2xl mx-auto px-5 py-3 flex items-end gap-3">
+          <div
+            ref={inputCardRef}
+            className={[
+              'flex items-end gap-3 px-4 py-3 rounded-2xl',
+              'border backdrop-blur-xl will-change-transform',
+              dk
+                ? 'bg-white/8 border-white/15 shadow-[0_4px_30px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]'
+                : 'bg-white/65 border-white/70 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]',
+            ].join(' ')}
+          >
             <textarea
               ref={addRef}
               rows={1}
@@ -684,7 +718,7 @@ export default function MemoList() {
               placeholder="새로운 생각 적기..."
               spellCheck={false}
               autoComplete="off"
-              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] ${dk ? 'text-white/80 placeholder:text-white/25' : 'text-black/80 placeholder:text-black/25'}`}
+              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] ${dk ? 'text-white/85 placeholder:text-white/28' : 'text-black/80 placeholder:text-black/30'}`}
             />
             <button
               type="button"
