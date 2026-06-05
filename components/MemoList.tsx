@@ -673,19 +673,17 @@ export default function MemoList() {
               className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] max-h-40 ${dk ? 'text-white/80 placeholder:text-white/25' : 'text-black/80 placeholder:text-black/25'}`}
             />
             <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
-              disabled={!hasContent}
               aria-label="등록"
               className={[
                 'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150',
-                hasContent
-                  ? dk
-                    ? 'bg-white/15 text-white/80 hover:bg-white/25'
-                    : 'bg-black/10 text-black/70 hover:bg-black/15'
-                  : dk
-                    ? 'text-white/20'
-                    : 'text-black/20',
+                dk
+                  ? 'bg-white/15 text-white/80 active:bg-white/30'
+                  : 'bg-black/[0.08] text-black/70 active:bg-black/15',
               ].join(' ')}
+              style={{ opacity: hasContent ? 1 : 0.25 }}
             >
               <SendIcon />
             </button>
