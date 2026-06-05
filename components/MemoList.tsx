@@ -674,7 +674,7 @@ export default function MemoList() {
             />
             <button
               type="button"
-              onMouseDown={(e) => e.preventDefault()}
+              onTouchEnd={(e) => { e.preventDefault(); handleSend(); }}
               onClick={handleSend}
               aria-label="등록"
               className={[
