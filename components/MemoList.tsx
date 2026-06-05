@@ -317,24 +317,24 @@ function MemoRow({
   return (
     <div className={`relative overflow-hidden border-b ${dk ? 'border-white/10' : 'border-black/8'}`}>
 
-      {/* Left action panel — revealed on right swipe (OFF → restore) */}
+      {/* Left action panel — 되살리기 (right swipe, OFF only) */}
       <div
         ref={leftActionRef}
-        className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden"
+        className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden bg-emerald-500"
         style={{ width: 0 }}
       >
-        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${dk ? 'text-white/45' : 'text-black/35'}`}>
+        <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
           {leftActionLabel}
         </span>
       </div>
 
-      {/* Right action panel — revealed on left swipe */}
+      {/* Right action panel — 끄기 or 삭제하기 (left swipe) */}
       <div
         ref={rightActionRef}
-        className="absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden"
+        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${isOff ? 'bg-red-500' : 'bg-neutral-400'}`}
         style={{ width: 0 }}
       >
-        <span className={`text-[0.75em] tracking-wide select-none whitespace-nowrap ${isOff ? 'text-red-500' : (dk ? 'text-white/45' : 'text-black/35')}`}>
+        <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
           {rightActionLabel}
         </span>
       </div>
