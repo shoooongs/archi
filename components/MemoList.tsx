@@ -525,7 +525,7 @@ export default function MemoList() {
     typingEndTimer.current = setTimeout(() => {
       isTypingRef.current = false;
       releaseCard();
-    }, 700);
+    }, 150);
   }
 
   // ── Add-new handlers ──────────────────────────────────────────────────
