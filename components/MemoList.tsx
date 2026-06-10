@@ -279,15 +279,17 @@ function MemoRow({
     if (!draggingRef.current) return;
     const dx = e.clientX - startXRef.current;
     const dy = Math.abs(e.clientY - startYRef.current);
-    if ((Math.abs(dx) > 6 || dy > 6) && longPressTimerRef.current !== null) {
+    if ((Math.abs(dx) > 8 || dy > 8) && longPressTimerRef.current !== null) {
       cancelLongPress(); setIsPressing(false);
     }
     if (!swipingRef.current) {
-      if (dy > Math.abs(dx) + 3) { draggingRef.current = false; setIsPressing(false); return; }
-      if (Math.abs(dx) > 6) {
-        swipingRef.current = true;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      } else { return; }
+      const absDx = Math.abs(dx);
+      // Wait for enough displacement before deciding direction
+      if (absDx < 8 && dy < 8) return;
+      // Cancel only when clearly vertical (1.5× ratio), not on slight diagonals
+      if (dy > absDx * 1.5) { draggingRef.current = false; setIsPressing(false); return; }
+      swipingRef.current = true;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     }
     // Right swipe only allowed for OFF memos
     const maxRight = isOff ? 120 : 0;
@@ -604,7 +606,7 @@ export default function MemoList() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="flex flex-col flex-1 overflow-hidden relative">
 
       {/* ── Scrollable timeline ─────────────────────────────────────── */}
       <div ref={listRef} className="flex-1 overflow-y-auto">
@@ -699,58 +701,60 @@ export default function MemoList() {
             />
           ))}
 
-          {/* Sentinel for scroll-to-bottom */}
-          <div className="h-2" />
+          {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
+          <div className={viewMode === 'ALL' ? 'h-[180px]' : 'h-2'} />
         </div>
       </div>
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
       {viewMode === 'ALL' && (
         <div
-          className="max-w-2xl mx-auto w-full px-4"
+          className={`absolute bottom-0 left-0 right-0 backdrop-blur-md ${dk ? 'bg-black/70' : 'bg-white/80'}`}
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
             paddingTop: '0.5rem',
           }}
         >
-          <div
-            ref={inputCardRef}
-            className={[
-              'flex items-end gap-3 px-4 py-3 rounded-2xl',
-              'border backdrop-blur-2xl will-change-transform',
-              dk
-                ? 'bg-transparent border-white/40 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]'
-                : 'bg-transparent border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
-            ].join(' ')}
-          >
-            <textarea
-              ref={addRef}
-              rows={1}
-              value={addDraft}
-              onChange={handleAddChange}
-              onKeyDown={handleAddKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              {...INPUT_GUARD}
-              placeholder="새로운 생각 적기..."
-              spellCheck={false}
-              autoComplete="off"
-              className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] ${dk ? 'text-white/85 placeholder:text-white/28' : 'text-black/80 placeholder:text-black/30'}`}
-            />
-            <button
-              type="button"
-              onTouchEnd={(e) => { e.preventDefault(); handleSend(); }}
-              onClick={handleSend}
-              aria-label="등록"
+          <div className="max-w-2xl mx-auto px-4">
+            <div
+              ref={inputCardRef}
               className={[
-                'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150',
+                'flex items-end gap-3 px-4 py-3 rounded-2xl',
+                'border backdrop-blur-2xl will-change-transform',
                 dk
-                  ? 'bg-white/15 text-white/80 active:bg-white/30'
-                  : 'bg-black/[0.08] text-black/70 active:bg-black/15',
+                  ? 'bg-transparent border-white/40 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]'
+                  : 'bg-transparent border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
               ].join(' ')}
-              style={{ opacity: hasContent ? 1 : 0.25 }}
             >
-              <SendIcon />
-            </button>
+              <textarea
+                ref={addRef}
+                rows={1}
+                value={addDraft}
+                onChange={handleAddChange}
+                onKeyDown={handleAddKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                {...INPUT_GUARD}
+                placeholder="새로운 생각 적기..."
+                spellCheck={false}
+                autoComplete="off"
+                className={`flex-1 resize-none overflow-hidden bg-transparent outline-none leading-relaxed min-h-[1.5rem] ${dk ? 'text-white/85 placeholder:text-white/28' : 'text-black/80 placeholder:text-black/30'}`}
+              />
+              <button
+                type="button"
+                onTouchEnd={(e) => { e.preventDefault(); handleSend(); }}
+                onClick={handleSend}
+                aria-label="등록"
+                className={[
+                  'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150',
+                  dk
+                    ? 'bg-white/15 text-white/80 active:bg-white/30'
+                    : 'bg-black/[0.08] text-black/70 active:bg-black/15',
+                ].join(' ')}
+                style={{ opacity: hasContent ? 1 : 0.25 }}
+              >
+                <SendIcon />
+              </button>
+            </div>
           </div>
         </div>
       )}
