@@ -17,8 +17,8 @@ type Action =
   | { type: 'HYDRATE'; memos: MemoItem[]; settings: AppSettings };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  fontFamily: 'serif',
-  fontSize: 'base',
+  fontFamily: 'sans',
+  fontSize: 'sm',
   bgMode: 'color',
   bgColor: '#f5f5f4',
   bgImage: null,
