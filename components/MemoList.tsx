@@ -469,9 +469,18 @@ export default function MemoList() {
     }
   }, []);
 
+  // double-rAF: first frame commits layout, second frame reads correct scrollHeight
+  const scrollToBottomDeferred = useCallback(() => {
+    let id = requestAnimationFrame(() => {
+      id = requestAnimationFrame(() => scrollToBottom(false));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [scrollToBottom]);
+
   // Scroll to bottom once after hydration (initial load)
   useEffect(() => {
-    if (isHydrated) scrollToBottom(false);
+    if (!isHydrated) return;
+    return scrollToBottomDeferred();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated]);
 
@@ -481,11 +490,10 @@ export default function MemoList() {
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
-  // Scroll to bottom on tab switch — rAF ensures layout is committed before reading scrollHeight
+  // Scroll to bottom on tab switch
   useEffect(() => {
-    const id = requestAnimationFrame(() => scrollToBottom(false));
-    return () => cancelAnimationFrame(id);
-  }, [viewMode, scrollToBottom]);
+    return scrollToBottomDeferred();
+  }, [viewMode, scrollToBottomDeferred]);
 
   useEffect(() => {
     if (!editingId || !bodyRef.current) return;
