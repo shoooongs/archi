@@ -12,12 +12,13 @@ interface State {
 type Action =
   | { type: 'ADD_MEMO'; text: string }
   | { type: 'UPDATE_MEMO'; id: string; patch: Partial<Pick<MemoItem, 'text' | 'title' | 'status'>> }
+  | { type: 'DELETE_MEMO'; id: string }
   | { type: 'UPDATE_SETTINGS'; patch: Partial<AppSettings> }
   | { type: 'HYDRATE'; memos: MemoItem[]; settings: AppSettings };
 
 const DEFAULT_SETTINGS: AppSettings = {
   fontFamily: 'sans',
-  fontSize: 'base',
+  fontSize: 'sm',
   bgMode: 'color',
   bgColor: '#f5f5f4',
   bgImage: null,
@@ -95,6 +96,8 @@ function reducer(state: State, action: Action): State {
           m.id === action.id ? { ...m, ...action.patch } : m
         ),
       };
+    case 'DELETE_MEMO':
+      return { ...state, memos: state.memos.filter((m) => m.id !== action.id) };
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.patch } };
     case 'HYDRATE':
@@ -108,6 +111,7 @@ interface StoreCtx {
   state: State;
   addMemo: (text: string) => void;
   updateMemo: (id: string, patch: Partial<Pick<MemoItem, 'text' | 'title' | 'status'>>) => void;
+  deleteMemo: (id: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
 }
 
@@ -157,6 +161,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         state,
         addMemo: (text) => dispatch({ type: 'ADD_MEMO', text }),
         updateMemo: (id, patch) => dispatch({ type: 'UPDATE_MEMO', id, patch }),
+        deleteMemo: (id) => dispatch({ type: 'DELETE_MEMO', id }),
         updateSettings: (patch) => dispatch({ type: 'UPDATE_SETTINGS', patch }),
       }}
     >
