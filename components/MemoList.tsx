@@ -703,7 +703,7 @@ export default function MemoList() {
           ))}
 
           {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
-          <div className={viewMode === 'ALL' ? 'h-[180px]' : 'h-2'} />
+          <div className={viewMode === 'ALL' ? 'h-[80px]' : 'h-2'} />
         </div>
       </div>
 
