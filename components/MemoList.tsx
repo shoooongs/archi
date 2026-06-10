@@ -488,11 +488,11 @@ export default function MemoList() {
   }, [viewMode, scrollToBottom]);
 
   useEffect(() => {
-    if (!editingId || !titleRef.current) return;
-    const el = titleRef.current;
+    if (!editingId || !bodyRef.current) return;
+    const el = bodyRef.current;
+    autoResize(el);
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
-    if (bodyRef.current) autoResize(bodyRef.current);
   }, [editingId]);
 
   // ── Filtered memos ────────────────────────────────────────────────────
