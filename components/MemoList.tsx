@@ -481,9 +481,10 @@ export default function MemoList() {
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
-  // Scroll to bottom on tab switch
+  // Scroll to bottom on tab switch — rAF ensures layout is committed before reading scrollHeight
   useEffect(() => {
-    scrollToBottom(true);
+    const id = requestAnimationFrame(() => scrollToBottom(false));
+    return () => cancelAnimationFrame(id);
   }, [viewMode, scrollToBottom]);
 
   useEffect(() => {
