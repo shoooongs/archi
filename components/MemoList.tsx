@@ -709,7 +709,7 @@ export default function MemoList() {
       {/* ── Floating glassmorphism input card ───────────────────────── */}
       {viewMode === 'ALL' && (
         <div
-          className={`absolute bottom-0 left-0 right-0 backdrop-blur-md ${dk ? 'bg-black/70' : 'bg-white/80'}`}
+          className="absolute bottom-0 left-0 right-0"
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
             paddingTop: '0.5rem',
@@ -722,8 +722,8 @@ export default function MemoList() {
                 'flex items-end gap-3 px-4 py-3 rounded-2xl',
                 'border backdrop-blur-2xl will-change-transform',
                 dk
-                  ? 'bg-transparent border-white/40 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]'
-                  : 'bg-transparent border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
+                  ? 'bg-neutral-900/85 border-white/40 shadow-[0_2px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]'
+                  : 'bg-white/90 border-white/35 shadow-[0_2px_12px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]',
               ].join(' ')}
             >
               <textarea
