@@ -444,8 +444,6 @@ export default function MemoList() {
   const [addDraft, setAddDraft] = useState('');
   const addRef           = useRef<HTMLTextAreaElement>(null);
   const inputCardRef     = useRef<HTMLDivElement>(null);
-  const inputBarRef      = useRef<HTMLDivElement>(null);
-  const [inputBarHeight, setInputBarHeight] = useState(80);
   const isTypingRef      = useRef(false);
   const typingEndTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -456,16 +454,6 @@ export default function MemoList() {
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef  = useRef<HTMLTextAreaElement>(null);
   const editCancelledRef = useRef(false);
-
-  // Track input bar height so the list sentinel matches it exactly
-  useEffect(() => {
-    const el = inputBarRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setInputBarHeight(el.offsetHeight));
-    ro.observe(el);
-    setInputBarHeight(el.offsetHeight);
-    return () => ro.disconnect();
-  }, []);
 
   // ── Scroll ────────────────────────────────────────────────────────────
   const listRef        = useRef<HTMLDivElement>(null);
@@ -714,15 +702,14 @@ export default function MemoList() {
             />
           ))}
 
-          {/* Sentinel for scroll-to-bottom — matches input bar height exactly */}
-          <div style={{ height: viewMode === 'ALL' ? inputBarHeight : 8 }} />
+          {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
+          <div className={viewMode === 'ALL' ? 'h-[180px]' : 'h-2'} />
         </div>
       </div>
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
       {viewMode === 'ALL' && (
         <div
-          ref={inputBarRef}
           className="absolute bottom-0 left-0 right-0"
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
