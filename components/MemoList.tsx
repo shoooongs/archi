@@ -307,8 +307,8 @@ function MemoRow({
       return;
     }
     if (Math.abs(dx) < 10) { onStartEdit(); return; }
-    if (dx < -60) onSwipeLeft();
-    else if (dx > 60) onSwipeRight();
+    if (dx < -40) onSwipeLeft();
+    else if (dx > 40) onSwipeRight();
     springBack();
   }
 
