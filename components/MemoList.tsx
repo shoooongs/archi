@@ -36,8 +36,6 @@ function SendIcon() {
   );
 }
 
-type ViewMode = 'ALL' | 'PUBLISHED_ONLY';
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatTimestamp(ts: number): string {
@@ -144,6 +142,7 @@ interface MemoRowProps {
   fontFamily: FontFamily;
   darkMode: boolean;
   isEditing: boolean;
+  isTrashView: boolean;
   editTitle: string;
   editBody: string;
   setEditTitle: (v: string) => void;
@@ -162,7 +161,7 @@ interface MemoRowProps {
 const LONG_PRESS_MS = 600;
 
 function MemoRow({
-  memo, fontFamily, darkMode, isEditing,
+  memo, fontFamily, darkMode, isEditing, isTrashView,
   editTitle, editBody, setEditTitle, onBodyChange,
   titleRef, bodyRef,
   onEditorBlur, onTitleKeyDown, onBodyKeyDown, onBodyFocus,
@@ -183,6 +182,14 @@ function MemoRow({
   useEffect(() => { setIsMounted(true); }, []);
 
   const isOff = memo.status === 'OFF';
+
+  // Left-swipe (right panel): grey→"끄기", red→"휴지통", darkred→"완전 삭제"
+  const rightActionBg    = isTrashView ? 'bg-red-600' : isOff ? 'bg-red-400' : 'bg-neutral-400';
+  const rightActionLabel = isTrashView ? '완전 삭제' : isOff ? '휴지통' : '끄기';
+  // Right-swipe (left panel): restore / recover from trash
+  const leftActionLabel  = isTrashView ? '복구하기' : '되살리기';
+  // Right swipe is available for OFF memos and all trash memos
+  const canSwipeRight    = isOff || isTrashView;
 
   function applyOffset(offset: number) {
     if (contentRef.current) contentRef.current.style.transform = `translateX(${offset}px)`;
@@ -265,8 +272,7 @@ function MemoRow({
       swipingRef.current = true;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     }
-    // Right swipe only allowed for OFF memos
-    const maxRight = isOff ? 120 : 0;
+    const maxRight = canSwipeRight ? 120 : 0;
     applyOffset(Math.max(-120, Math.min(maxRight, dx)));
   }
 
@@ -299,15 +305,10 @@ function MemoRow({
       : `scale-100 ${isOff ? 'opacity-30' : 'opacity-100'}`,
   ].join(' ');
 
-  // Right action panel label (left swipe)
-  const rightActionLabel = isOff ? '삭제하기' : '끄기';
-  // Left action panel label (right swipe — only for OFF memos)
-  const leftActionLabel  = '되살리기';
-
   return (
     <div className={`relative overflow-hidden border-b ${dk ? 'border-white/10' : 'border-black/8'}`}>
 
-      {/* Left action panel — 되살리기 (right swipe, OFF only) */}
+      {/* Left action panel — 복구/되살리기 (right swipe) */}
       <div
         ref={leftActionRef}
         className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden bg-emerald-500"
@@ -318,10 +319,10 @@ function MemoRow({
         </span>
       </div>
 
-      {/* Right action panel — 끄기 or 삭제하기 (left swipe) */}
+      {/* Right action panel — 끄기 / 휴지통 / 완전 삭제 (left swipe) */}
       <div
         ref={rightActionRef}
-        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${isOff ? 'bg-red-500' : 'bg-neutral-400'}`}
+        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${rightActionBg}`}
         style={{ width: 0, opacity: 0 }}
       >
         <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
@@ -332,7 +333,7 @@ function MemoRow({
       {/* Swipeable outer layer */}
       <div
         ref={contentRef}
-        className={['px-5', isEditing ? 'py-4' : 'py-5 cursor-text'].join(' ')}
+        className={['px-5 will-change-transform', isEditing ? 'py-4' : 'py-5 cursor-text'].join(' ')}
         style={{ touchAction: 'pan-y' }}
         onPointerDown={isEditing ? undefined : handlePointerDown}
         onPointerMove={isEditing ? undefined : handlePointerMove}
@@ -410,8 +411,9 @@ export default function MemoList() {
   const { memos, settings, isHydrated } = state;
   const dk = settings.darkMode;
 
-  // ── View mode & sidebar ───────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<ViewMode>('ALL');
+  // ── Active view & sidebar ─────────────────────────────────────────────
+  // 'all' = All Memos, 'trash' = Trash, any other string = folder id
+  const [activeView,  setActiveView]  = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Add-new draft (always-visible input bar) ──────────────────────────
@@ -467,10 +469,10 @@ export default function MemoList() {
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
-  // Scroll to bottom on tab switch
+  // Scroll to bottom on view switch
   useEffect(() => {
     return scrollToBottomDeferred();
-  }, [viewMode, scrollToBottomDeferred]);
+  }, [activeView, scrollToBottomDeferred]);
 
   useEffect(() => {
     if (!editingId || !bodyRef.current) return;
@@ -495,10 +497,13 @@ export default function MemoList() {
   }, [editBody, editingId]);
 
   // ── Filtered memos ────────────────────────────────────────────────────
+  const isTrashView = activeView === 'trash';
   const displayedMemos = memos.filter((m) => {
+    if (isTrashView) return m.isDeleted;
+    if (m.isDeleted) return false;
     if (settings.hideOff && m.status === 'OFF') return false;
-    if (viewMode === 'PUBLISHED_ONLY') return m.status === 'PUBLISH';
-    return true;
+    if (activeView === 'all') return true;
+    return m.folderId === activeView;
   });
 
   // ── Card press / release ─────────────────────────────────────────────
@@ -563,7 +568,8 @@ export default function MemoList() {
     isTypingRef.current = false;
     pressCard('strong');
     setTimeout(releaseCard, 120);
-    addMemo(trimmed);
+    const folderId = activeView !== 'all' && activeView !== 'trash' ? activeView : null;
+    addMemo(trimmed, folderId);
     setAddDraft('');
     requestAnimationFrame(() => {
       if (addRef.current) {
@@ -619,7 +625,12 @@ export default function MemoList() {
     <div className="flex flex-col flex-1 overflow-hidden relative">
 
       {/* ── Sidebar drawer ──────────────────────────────────────────── */}
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeView={activeView}
+        onSelectView={setActiveView}
+      />
 
       {/* ── Scrollable timeline ─────────────────────────────────────── */}
       <div ref={listRef} className="flex-1 overflow-y-auto">
@@ -645,7 +656,11 @@ export default function MemoList() {
           {isHydrated && displayedMemos.length === 0 && (
             <div className="px-5 py-12 text-center">
               <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                {viewMode === 'PUBLISHED_ONLY' ? '아직 작성된 글이 없어요.' : '첫 생각을 아래에 적어보세요.'}
+                {isTrashView
+                  ? '휴지통이 비어있어요.'
+                  : activeView !== 'all'
+                    ? '이 폴더에 아직 메모가 없어요.'
+                    : '첫 생각을 아래에 적어보세요.'}
               </p>
             </div>
           )}
@@ -657,6 +672,7 @@ export default function MemoList() {
               fontFamily={settings.fontFamily}
               darkMode={dk}
               isEditing={editingId === memo.id}
+              isTrashView={isTrashView}
               editTitle={editTitle}
               editBody={editBody}
               setEditTitle={setEditTitle}
@@ -667,29 +683,38 @@ export default function MemoList() {
               onTitleKeyDown={handleTitleKeyDown}
               onBodyKeyDown={handleBodyKeyDown}
               onBodyFocus={handleBodyFocus}
-              onStartEdit={() => startEdit(memo.id, memo.title, memo.text)}
+              onStartEdit={() => { if (!isTrashView) startEdit(memo.id, memo.title, memo.text); }}
               onSwipeLeft={() => {
-                if (memo.status === 'OFF') {
+                if (isTrashView) {
+                  // Permanent delete from trash
                   deleteMemo(memo.id);
+                } else if (memo.status === 'OFF') {
+                  // Second swipe: move to trash
+                  updateMemo(memo.id, { isDeleted: true });
                 } else {
+                  // First swipe: deactivate
                   updateMemo(memo.id, { status: 'OFF' });
                 }
               }}
               onSwipeRight={() => {
-                if (memo.status === 'OFF') {
+                if (isTrashView) {
+                  // Restore from trash
+                  updateMemo(memo.id, { isDeleted: false });
+                } else if (memo.status === 'OFF') {
+                  // Restore from OFF
                   updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
                 }
               }}
             />
           ))}
 
-          {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
-          <div className={viewMode === 'ALL' ? 'h-[180px]' : 'h-2'} />
+          {/* Sentinel — extra space so last memo clears the input bar */}
+          <div className={!isTrashView ? 'h-[180px]' : 'h-2'} />
         </div>
       </div>
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
-      {viewMode === 'ALL' && (
+      {!isTrashView && (
         <div
           className="absolute bottom-0 left-0 right-0"
           style={{
