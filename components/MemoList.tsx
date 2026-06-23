@@ -158,6 +158,82 @@ interface MemoRowProps {
   onSwipeRight: () => void;
 }
 
+// ─── PublishedEditModal ───────────────────────────────────────────────────────
+
+function PublishedEditModal({
+  memo,
+  dk,
+  onClose,
+  onSave,
+}: {
+  memo: MemoItem;
+  dk: boolean;
+  onClose: () => void;
+  onSave: (title: string, body: string) => void;
+}) {
+  const [title, setTitle] = useState(memo.title ?? '');
+  const [body,  setBody]  = useState(memo.text);
+
+  function handleSave() {
+    const t = title.trim(), b = body.trim();
+    if (b) onSave(t, b);
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+  }
+
+  return (
+    <div
+      className={`fixed inset-0 z-[60] flex flex-col ${dk ? 'bg-neutral-950' : 'bg-[#f9f9f8]'}`}
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {/* Header */}
+      <div className={`flex items-center justify-between px-5 py-3.5 border-b flex-shrink-0 ${dk ? 'border-white/10' : 'border-black/8'}`}>
+        <button
+          onClick={onClose}
+          className={`text-sm transition-colors ${dk ? 'text-white/45 hover:text-white/75' : 'text-black/40 hover:text-black/68'}`}
+        >
+          취소
+        </button>
+        <span className={`text-xs tracking-widest uppercase ${dk ? 'text-white/22' : 'text-black/18'}`}>Published</span>
+        <button
+          onClick={handleSave}
+          className={`text-sm font-semibold transition-colors ${dk ? 'text-white/78 hover:text-white' : 'text-black/68 hover:text-black'}`}
+        >
+          저장
+        </button>
+      </div>
+      {/* Editor */}
+      <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-5 pb-8 gap-3">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="제목을 입력하세요..."
+          autoFocus
+          spellCheck={false}
+          autoComplete="off"
+          className={`w-full bg-transparent outline-none text-xl font-semibold leading-snug ${dk ? 'text-white/90 placeholder:text-white/22' : 'text-black/90 placeholder:text-black/20'}`}
+        />
+        <div className={`border-t ${dk ? 'border-white/10' : 'border-black/8'}`} />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={handleKeyDown}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="본문을 입력하세요..."
+          className={`flex-1 bg-transparent outline-none leading-relaxed resize-none w-full ${dk ? 'text-white/75 placeholder:text-white/22' : 'text-black/70 placeholder:text-black/20'}`}
+          style={{ minHeight: '50vh' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── MemoRow ─────────────────────────────────────────────────────────────────
+
 const LONG_PRESS_MS = 600;
 
 function MemoRow({
@@ -416,6 +492,12 @@ export default function MemoList() {
   const [activeView,  setActiveView]  = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ── Sub-tab: Timeline | Published ─────────────────────────────────────
+  const [subTab, setSubTab] = useState<'timeline' | 'published'>('timeline');
+
+  // ── Published edit modal ──────────────────────────────────────────────
+  const [editModalMemo, setEditModalMemo] = useState<MemoItem | null>(null);
+
   // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
   const addRef           = useRef<HTMLTextAreaElement>(null);
@@ -469,8 +551,9 @@ export default function MemoList() {
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
-  // Scroll to bottom on view switch
+  // Scroll to bottom on view switch + reset subTab
   useEffect(() => {
+    setSubTab('timeline');
     return scrollToBottomDeferred();
   }, [activeView, scrollToBottomDeferred]);
 
@@ -505,6 +588,8 @@ export default function MemoList() {
     if (activeView === 'all') return true;
     return m.folderId === activeView;
   });
+  const publishedMemos = displayedMemos.filter((m) => m.status === 'PUBLISH' && m.title);
+  const showInputCard  = !isTrashView && subTab === 'timeline';
 
   // ── Card press / release ─────────────────────────────────────────────
   function pressCard(depth: 'light' | 'strong' = 'light') {
@@ -635,12 +720,12 @@ export default function MemoList() {
       {/* ── Scrollable timeline ─────────────────────────────────────── */}
       <div ref={listRef} className="flex-1 overflow-y-auto">
 
-        {/* Minimal top bar */}
+        {/* Sticky header — hamburger + sub-tab bar */}
         <div
-          className="sticky top-0 z-10"
+          className={`sticky top-0 z-10 backdrop-blur-md transition-colors duration-200 ${dk ? 'bg-neutral-950/80' : 'bg-white/75'}`}
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div className="px-4 py-3">
+          <div className="px-4 pt-2.5 pb-1">
             <button
               onClick={() => setSidebarOpen(true)}
               className={`p-1.5 -ml-1 rounded-xl transition-colors ${dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/30 hover:text-black/58 hover:bg-black/5'}`}
@@ -649,72 +734,129 @@ export default function MemoList() {
               <HamburgerIcon />
             </button>
           </div>
+          {/* Tab bar — hidden in trash view */}
+          {!isTrashView && (
+            <div className="flex justify-center gap-10 pb-2.5">
+              {(['timeline', 'published'] as const).map((tab) => {
+                const active = subTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setSubTab(tab)}
+                    className={[
+                      'text-xs tracking-wide transition-all duration-200 pb-px border-b',
+                      active
+                        ? `font-semibold ${dk ? 'text-white/80 border-white/50' : 'text-black/75 border-black/50'}`
+                        : `border-transparent ${dk ? 'text-white/30 hover:text-white/58' : 'text-black/28 hover:text-black/52'}`,
+                    ].join(' ')}
+                  >
+                    {tab === 'timeline' ? 'Timeline' : 'Published'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="max-w-2xl mx-auto">
 
-          {isHydrated && displayedMemos.length === 0 && (
-            <div className="px-5 py-12 text-center">
-              <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                {isTrashView
-                  ? '휴지통이 비어있어요.'
-                  : activeView !== 'all'
-                    ? '이 폴더에 아직 메모가 없어요.'
-                    : '첫 생각을 아래에 적어보세요.'}
-              </p>
-            </div>
+          {subTab === 'published' ? (
+            // ── Published list ────────────────────────────────────────────
+            <>
+              {isHydrated && publishedMemos.length === 0 && (
+                <div className="px-5 py-14 text-center">
+                  <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                    아직 Published 글이 없어요.
+                  </p>
+                  <p className={`mt-1.5 text-xs ${dk ? 'text-white/18' : 'text-black/18'}`}>
+                    제목이 있는 메모를 발행하면 여기에 표시됩니다.
+                  </p>
+                </div>
+              )}
+              {isHydrated && publishedMemos.map((memo) => (
+                <div
+                  key={memo.id}
+                  onClick={() => setEditModalMemo(memo)}
+                  className={`px-5 py-4 border-b cursor-pointer transition-colors ${dk ? 'border-white/[0.07] active:bg-white/[0.04]' : 'border-black/[0.06] active:bg-black/[0.025]'}`}
+                >
+                  <h3 className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/88' : 'text-black/88'}`}>
+                    {memo.title}
+                  </h3>
+                  {memo.text && (
+                    <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-2 ${dk ? 'text-white/45' : 'text-black/42'}`}>
+                      {memo.text}
+                    </p>
+                  )}
+                  <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
+                    {formatTimestamp(memo.createdAt)}
+                  </p>
+                </div>
+              ))}
+              <div className="h-8" />
+            </>
+          ) : (
+            // ── Timeline ─────────────────────────────────────────────────
+            <>
+              {isHydrated && displayedMemos.length === 0 && (
+                <div className="px-5 py-12 text-center">
+                  <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                    {isTrashView
+                      ? '휴지통이 비어있어요.'
+                      : activeView !== 'all'
+                        ? '이 폴더에 아직 메모가 없어요.'
+                        : '첫 생각을 아래에 적어보세요.'}
+                  </p>
+                </div>
+              )}
+
+              {isHydrated && displayedMemos.map((memo) => (
+                <MemoRow
+                  key={memo.id}
+                  memo={memo}
+                  fontFamily={settings.fontFamily}
+                  darkMode={dk}
+                  isEditing={editingId === memo.id}
+                  isTrashView={isTrashView}
+                  editTitle={editTitle}
+                  editBody={editBody}
+                  setEditTitle={setEditTitle}
+                  onBodyChange={handleBodyChange}
+                  titleRef={titleRef as RefObject<HTMLInputElement>}
+                  bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
+                  onEditorBlur={handleEditorBlur}
+                  onTitleKeyDown={handleTitleKeyDown}
+                  onBodyKeyDown={handleBodyKeyDown}
+                  onBodyFocus={handleBodyFocus}
+                  onStartEdit={() => { if (!isTrashView) startEdit(memo.id, memo.title, memo.text); }}
+                  onSwipeLeft={() => {
+                    if (isTrashView) {
+                      deleteMemo(memo.id);
+                    } else if (memo.status === 'OFF') {
+                      updateMemo(memo.id, { isDeleted: true });
+                    } else {
+                      updateMemo(memo.id, { status: 'OFF' });
+                    }
+                  }}
+                  onSwipeRight={() => {
+                    if (isTrashView) {
+                      updateMemo(memo.id, { isDeleted: false });
+                    } else if (memo.status === 'OFF') {
+                      updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
+                    }
+                  }}
+                />
+              ))}
+
+              {/* Sentinel — extra space so last memo clears the input bar */}
+              <div className={showInputCard ? 'h-[180px]' : 'h-2'} />
+            </>
           )}
 
-          {isHydrated && displayedMemos.map((memo) => (
-            <MemoRow
-              key={memo.id}
-              memo={memo}
-              fontFamily={settings.fontFamily}
-              darkMode={dk}
-              isEditing={editingId === memo.id}
-              isTrashView={isTrashView}
-              editTitle={editTitle}
-              editBody={editBody}
-              setEditTitle={setEditTitle}
-              onBodyChange={handleBodyChange}
-              titleRef={titleRef as RefObject<HTMLInputElement>}
-              bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
-              onEditorBlur={handleEditorBlur}
-              onTitleKeyDown={handleTitleKeyDown}
-              onBodyKeyDown={handleBodyKeyDown}
-              onBodyFocus={handleBodyFocus}
-              onStartEdit={() => { if (!isTrashView) startEdit(memo.id, memo.title, memo.text); }}
-              onSwipeLeft={() => {
-                if (isTrashView) {
-                  // Permanent delete from trash
-                  deleteMemo(memo.id);
-                } else if (memo.status === 'OFF') {
-                  // Second swipe: move to trash
-                  updateMemo(memo.id, { isDeleted: true });
-                } else {
-                  // First swipe: deactivate
-                  updateMemo(memo.id, { status: 'OFF' });
-                }
-              }}
-              onSwipeRight={() => {
-                if (isTrashView) {
-                  // Restore from trash
-                  updateMemo(memo.id, { isDeleted: false });
-                } else if (memo.status === 'OFF') {
-                  // Restore from OFF
-                  updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
-                }
-              }}
-            />
-          ))}
-
-          {/* Sentinel — extra space so last memo clears the input bar */}
-          <div className={!isTrashView ? 'h-[180px]' : 'h-2'} />
         </div>
       </div>
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
-      {!isTrashView && (
+      {showInputCard && (
         <div
           className="absolute bottom-0 left-0 right-0"
           style={{
@@ -765,6 +907,20 @@ export default function MemoList() {
           </div>
         </div>
       )}
+
+      {/* ── Published edit modal ─────────────────────────────────────── */}
+      {editModalMemo && (
+        <PublishedEditModal
+          memo={editModalMemo}
+          dk={dk}
+          onClose={() => setEditModalMemo(null)}
+          onSave={(title, body) => {
+            updateMemo(editModalMemo.id, { title: title || null, text: body, status: 'PUBLISH' });
+            setEditModalMemo(null);
+          }}
+        />
+      )}
+
     </div>
   );
 }
