@@ -1,6 +1,18 @@
 import type { ReactNode } from 'react';
 
-// ─── Strip markdown to plain text (for list previews) ────────────────────────
+// ─── Strip HTML to plain text (for list previews) ────────────────────────────
+
+export function stripHtml(html: string): string {
+  if (!html.includes('<')) return html;
+  if (typeof document !== 'undefined') {
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || '';
+  }
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// ─── Strip markdown to plain text (legacy, kept for reference) ───────────────
 
 export function stripMarkdown(text: string): string {
   return text

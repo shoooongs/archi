@@ -15,7 +15,7 @@ import { useStore } from '@/lib/store';
 import type { FontFamily, MemoItem } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
 import ZenEditor from '@/components/ZenEditor';
-import { stripMarkdown } from '@/lib/markdown';
+import { stripHtml } from '@/lib/markdown';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -380,14 +380,13 @@ function MemoRow({
             </div>
 
           ) : memo.status === 'PUBLISH' ? (
-            // ── Published ──
-            // Title bold, body same font-size as DUMP memos — no size reduction.
+            // ── Published — strip HTML for plain timeline display ──────────
             <>
               <p className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/90' : 'text-black/90'}`}>
                 {memo.title}
               </p>
-              <p className={`mt-1.5 leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
-                {memo.text}
+              <p className={`mt-1.5 leading-relaxed break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                {isMounted ? stripHtml(memo.text) : memo.text}
               </p>
             </>
 
@@ -702,7 +701,7 @@ export default function MemoList() {
                 </div>
               )}
               {isHydrated && publishedMemos.map((memo) => {
-                const preview = stripMarkdown(memo.text);
+                const preview = stripHtml(memo.text);
                 return (
                   <div
                     key={memo.id}
@@ -758,7 +757,11 @@ export default function MemoList() {
                   onTitleKeyDown={handleTitleKeyDown}
                   onBodyKeyDown={handleBodyKeyDown}
                   onBodyFocus={handleBodyFocus}
-                  onStartEdit={() => { if (!isTrashView) startEdit(memo.id, memo.title, memo.text); }}
+                  onStartEdit={() => {
+                    if (isTrashView) return;
+                    if (memo.status === 'PUBLISH') { setZenMemo(memo); return; }
+                    startEdit(memo.id, memo.title, memo.text);
+                  }}
                   onSwipeLeft={() => {
                     if (isTrashView) {
                       deleteMemo(memo.id);
