@@ -125,7 +125,7 @@ interface StoreCtx {
 
 const StoreContext = createContext<StoreCtx | null>(null);
 
-const STORAGE_KEY = 'mind-dump-v1';
+export const STORAGE_KEY = 'mind-dump-v1';
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, DEFAULT_STATE);

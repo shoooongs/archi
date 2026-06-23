@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, STORAGE_KEY } from '@/lib/store';
 import type { FontFamily, FontSize } from '@/lib/types';
 
 // ─── Image compressor ────────────────────────────────────────────────────────
@@ -104,10 +104,68 @@ function SunIcon() {
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const { state, updateSettings } = useStore();
-  const { settings } = state;
+  const { settings, memos, folders } = state;
   const dk = settings.darkMode;
   const fileRef = useRef<HTMLInputElement>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing,  setIsProcessing]  = useState(false);
+  const [exportCopied,  setExportCopied]  = useState(false);
+  const [importJson,    setImportJson]    = useState('');
+  const [importError,   setImportError]   = useState('');
+
+  function handleExport() {
+    const data = JSON.stringify({ memos, folders, settings }, null, 2);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(data)
+        .then(() => { setExportCopied(true); setTimeout(() => setExportCopied(false), 2200); })
+        .catch(() => triggerDownload(data));
+    } else {
+      triggerDownload(data);
+    }
+  }
+
+  function triggerDownload(data: string) {
+    const blob = new Blob([data], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `mind-dump-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(mode: 'overwrite' | 'merge') {
+    setImportError('');
+    try {
+      const trimmed = importJson.trim();
+      if (!trimmed) return;
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (!Array.isArray(parsed.memos)) {
+        setImportError('올바른 Mind Dump JSON 형식이 아닙니다.');
+        return;
+      }
+      type R = Record<string, unknown>;
+      if (mode === 'overwrite') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          memos:    parsed.memos,
+          folders:  Array.isArray(parsed.folders) ? parsed.folders : [],
+          settings: (typeof parsed.settings === 'object' && parsed.settings) ? parsed.settings : {},
+        }));
+      } else {
+        const incomingMemos   = parsed.memos as R[];
+        const incomingFolders = Array.isArray(parsed.folders) ? (parsed.folders as R[]) : [];
+        const existingMemoIds   = new Set(memos.map((m) => m.id));
+        const existingFolderIds = new Set(folders.map((f) => f.id));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          memos:    [...memos,   ...incomingMemos.filter((m)   => !existingMemoIds.has(String(m.id ?? '')))],
+          folders:  [...folders, ...incomingFolders.filter((f) => !existingFolderIds.has(String(f.id ?? '')))],
+          settings: settings,
+        }));
+      }
+      window.location.reload();
+    } catch {
+      setImportError('JSON 파싱 오류. 형식을 확인해 주세요.');
+    }
+  }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -142,17 +200,18 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-[340px] rounded-2xl overflow-hidden shadow-2xl ${dk ? 'bg-neutral-900 border border-white/12' : 'bg-white border border-black/8'}`}
+        className={`w-full max-w-[340px] rounded-2xl overflow-hidden shadow-2xl flex flex-col ${dk ? 'bg-neutral-900 border border-white/12' : 'bg-white border border-black/8'}`}
+        style={{ maxHeight: 'calc(100dvh - 3rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${dk ? 'border-white/8' : 'border-black/6'}`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${dk ? 'border-white/8' : 'border-black/6'}`}>
           <span className={`text-sm font-semibold ${dk ? 'text-white/80' : 'text-black/75'}`}>설정</span>
           <button onClick={onClose} className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/6'}`}>
             <CloseIcon />
           </button>
         </div>
 
-        <div className="px-5 py-5 flex flex-col gap-4">
+        <div className="px-5 py-5 flex flex-col gap-4 overflow-y-auto">
           {/* Dark mode */}
           <div className={row}>
             <span className={lbl}>모드</span>
@@ -241,6 +300,77 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           )}
+
+          {/* ── 데이터 관리 ────────────────────────────────────── */}
+          <div className={`border-t pt-4 flex flex-col gap-3 ${dk ? 'border-white/8' : 'border-black/6'}`}>
+            <span className={`text-[0.6rem] font-semibold tracking-[0.18em] uppercase ${dk ? 'text-white/25' : 'text-black/20'}`}>
+              데이터 관리
+            </span>
+
+            {/* Export */}
+            <div className={row}>
+              <span className={lbl}>내보내기</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleExport}
+                  className={`${pill} ${inactive}`}
+                >
+                  JSON 복사
+                </button>
+                <button
+                  onClick={() => triggerDownload(JSON.stringify({ memos, folders, settings }, null, 2))}
+                  className={`${pill} ${inactive}`}
+                >
+                  파일 저장
+                </button>
+                {exportCopied && (
+                  <span className={`text-xs font-medium ${dk ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                    복사됨!
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Import */}
+            <div className="flex flex-col gap-2">
+              <span className={`text-xs ${lbl} w-auto`}>가져오기</span>
+              <textarea
+                value={importJson}
+                onChange={(e) => { setImportJson(e.target.value); setImportError(''); }}
+                placeholder="JSON 텍스트를 붙여넣으세요..."
+                rows={3}
+                spellCheck={false}
+                className={[
+                  'w-full text-xs p-2.5 rounded-xl border resize-none outline-none font-mono leading-relaxed transition-colors',
+                  dk
+                    ? 'bg-white/[0.04] border-white/10 text-white/65 placeholder:text-white/22 focus:border-white/22'
+                    : 'bg-black/[0.03] border-black/10 text-black/60 placeholder:text-black/20 focus:border-black/22',
+                ].join(' ')}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleImport('overwrite')}
+                  disabled={!importJson.trim()}
+                  className={`${pill} flex-1 justify-center ${!importJson.trim() ? `opacity-40 cursor-not-allowed ${inactive}` : inactive}`}
+                >
+                  덮어쓰기
+                </button>
+                <button
+                  onClick={() => handleImport('merge')}
+                  disabled={!importJson.trim()}
+                  className={`${pill} flex-1 justify-center ${!importJson.trim() ? `opacity-40 cursor-not-allowed ${inactive}` : inactive}`}
+                >
+                  병합하기
+                </button>
+              </div>
+              {importError && (
+                <p className={`text-[0.72rem] leading-snug ${dk ? 'text-red-400' : 'text-red-500'}`}>
+                  {importError}
+                </p>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
