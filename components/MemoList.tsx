@@ -4,7 +4,9 @@ import {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
+  type ChangeEvent,
   type KeyboardEvent,
   type FocusEvent,
   type RefObject,
@@ -173,7 +175,7 @@ interface MemoRowProps {
   editTitle: string;
   editBody: string;
   setEditTitle: (v: string) => void;
-  setEditBody: (v: string) => void;
+  onBodyChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   titleRef: RefObject<HTMLInputElement>;
   bodyRef: RefObject<HTMLTextAreaElement>;
   onEditorBlur: (e: FocusEvent<HTMLDivElement>) => void;
@@ -189,7 +191,7 @@ const LONG_PRESS_MS = 600;
 
 function MemoRow({
   memo, fontFamily, darkMode, isEditing,
-  editTitle, editBody, setEditTitle, setEditBody,
+  editTitle, editBody, setEditTitle, onBodyChange,
   titleRef, bodyRef,
   onEditorBlur, onTitleKeyDown, onBodyKeyDown, onBodyFocus,
   onStartEdit, onSwipeLeft, onSwipeRight,
@@ -389,7 +391,7 @@ function MemoRow({
                 ref={bodyRef}
                 rows={1}
                 value={editBody}
-                onChange={(e) => { setEditBody(e.target.value); autoResize(e.target); }}
+                onChange={onBodyChange}
                 onKeyDown={onBodyKeyDown}
                 onFocus={onBodyFocus}
                 onClick={(e) => e.stopPropagation()}
@@ -453,7 +455,10 @@ export default function MemoList() {
   const [editBody, setEditBody]   = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef  = useRef<HTMLTextAreaElement>(null);
-  const editCancelledRef = useRef(false);
+  const editCancelledRef  = useRef(false);
+  const editStartRef      = useRef(false);
+  const addCursorRef      = useRef({ start: 0, end: 0 });
+  const editBodyCursorRef = useRef({ start: 0, end: 0 });
 
   // ── Scroll ────────────────────────────────────────────────────────────
   const listRef        = useRef<HTMLDivElement>(null);
@@ -499,9 +504,23 @@ export default function MemoList() {
     if (!editingId || !bodyRef.current) return;
     const el = bodyRef.current;
     autoResize(el);
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
+    el.focus(); // onFocus → handleBodyFocus → sets cursor to end on initial open
   }, [editingId]);
+
+  // Restore add-new cursor after re-renders (prevents cursor jump on mobile)
+  useLayoutEffect(() => {
+    const el = addRef.current;
+    if (!el || document.activeElement !== el) return;
+    el.setSelectionRange(addCursorRef.current.start, addCursorRef.current.end);
+  }, [addDraft]);
+
+  // Restore edit-body cursor after re-renders; skip on initial edit-open
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el || !editingId || document.activeElement !== el) return;
+    if (editStartRef.current) return;
+    el.setSelectionRange(editBodyCursorRef.current.start, editBodyCursorRef.current.end);
+  }, [editBody, editingId]);
 
   // ── Filtered memos ────────────────────────────────────────────────────
   const displayedMemos = memos.filter((m) => {
@@ -540,10 +559,17 @@ export default function MemoList() {
   }
 
   // ── Add-new handlers ──────────────────────────────────────────────────
-  function handleAddChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleAddChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    addCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
     setAddDraft(e.target.value);
     autoResize(e.target);
     triggerTypingState();
+  }
+
+  function handleBodyChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    editBodyCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+    setEditBody(e.target.value);
+    autoResize(e.target);
   }
 
   // Enter always inserts a newline — submit only via the send button.
@@ -578,6 +604,7 @@ export default function MemoList() {
   // ── Edit handlers ─────────────────────────────────────────────────────
   function startEdit(id: string, title: string | null, body: string) {
     if (editingId === id) return;
+    editStartRef.current = true;
     setEditingId(id); setEditTitle(title ?? ''); setEditBody(body);
   }
   function commitEdit() {
@@ -607,6 +634,8 @@ export default function MemoList() {
     if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
   }
   function handleBodyFocus(e: FocusEvent<HTMLTextAreaElement>) {
+    if (!editStartRef.current) return; // already editing — keep browser-placed cursor
+    editStartRef.current = false;
     const el = e.target;
     el.setSelectionRange(el.value.length, el.value.length);
   }
@@ -687,7 +716,7 @@ export default function MemoList() {
               editTitle={editTitle}
               editBody={editBody}
               setEditTitle={setEditTitle}
-              setEditBody={setEditBody}
+              onBodyChange={handleBodyChange}
               titleRef={titleRef as RefObject<HTMLInputElement>}
               bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
               onEditorBlur={handleEditorBlur}
@@ -711,7 +740,7 @@ export default function MemoList() {
           ))}
 
           {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
-          <div className={viewMode === 'ALL' ? 'h-[80px]' : 'h-2'} />
+          <div className={viewMode === 'ALL' ? 'h-[180px]' : 'h-2'} />
         </div>
       </div>
 
