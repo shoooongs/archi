@@ -14,6 +14,8 @@ import {
 import { useStore } from '@/lib/store';
 import type { FontFamily, MemoItem } from '@/lib/types';
 import Sidebar from '@/components/Sidebar';
+import ZenEditor from '@/components/ZenEditor';
+import { stripMarkdown } from '@/lib/markdown';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -156,114 +158,6 @@ interface MemoRowProps {
   onStartEdit: () => void;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
-}
-
-// ─── PublishedEditModal (bottom-sheet) ───────────────────────────────────────
-
-function PublishedEditModal({
-  memo,
-  dk,
-  onClose,
-  onSave,
-}: {
-  memo: MemoItem;
-  dk: boolean;
-  onClose: () => void;
-  onSave: (title: string, body: string) => void;
-}) {
-  const [title, setTitle] = useState(memo.title ?? '');
-  const [body,  setBody]  = useState(memo.text);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-size body on mount
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-  }, []);
-
-  function handleBodyChange(e: ChangeEvent<HTMLTextAreaElement>) {
-    setBody(e.target.value);
-    const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-  }
-
-  function handleSave() {
-    const t = title.trim(), b = body.trim();
-    if (b) onSave(t, b);
-  }
-
-  return (
-    // Backdrop — click to dismiss
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-      onClick={onClose}
-    >
-      {/* Sheet */}
-      <div
-        className={[
-          'w-full max-w-lg flex flex-col rounded-t-[1.75rem] overflow-hidden shadow-2xl',
-          dk
-            ? 'bg-neutral-900 border-t border-x border-white/[0.1]'
-            : 'bg-white border-t border-x border-black/[0.07]',
-        ].join(' ')}
-        style={{ maxHeight: '88vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-0.5 flex-shrink-0">
-          <div className={`w-8 h-1 rounded-full ${dk ? 'bg-white/18' : 'bg-black/10'}`} />
-        </div>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-2.5 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className={`text-sm transition-colors ${dk ? 'text-white/45 hover:text-white/72' : 'text-black/40 hover:text-black/65'}`}
-          >
-            취소
-          </button>
-          <span className={`text-[0.62rem] font-semibold tracking-[0.22em] uppercase ${dk ? 'text-white/25' : 'text-black/20'}`}>
-            Published
-          </span>
-          <button
-            onClick={handleSave}
-            className={`text-sm font-semibold transition-colors ${dk ? 'text-white/78 hover:text-white' : 'text-black/68 hover:text-black'}`}
-          >
-            저장
-          </button>
-        </div>
-        {/* Divider */}
-        <div className={`mx-5 flex-shrink-0 border-t ${dk ? 'border-white/8' : 'border-black/6'}`} />
-        {/* Editor — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 flex flex-col gap-3">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="제목을 입력하세요..."
-            autoFocus
-            spellCheck={false}
-            autoComplete="off"
-            className={`w-full bg-transparent outline-none text-[1.05rem] font-semibold leading-snug ${dk ? 'text-white/90 placeholder:text-white/22' : 'text-black/90 placeholder:text-black/20'}`}
-          />
-          <div className={`border-t ${dk ? 'border-white/8' : 'border-black/6'}`} />
-          <textarea
-            ref={bodyRef}
-            value={body}
-            onChange={handleBodyChange}
-            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
-            spellCheck={false}
-            autoComplete="off"
-            placeholder="본문을 입력하세요..."
-            className={`w-full bg-transparent outline-none leading-relaxed resize-none min-h-[10rem] ${dk ? 'text-white/75 placeholder:text-white/22' : 'text-black/70 placeholder:text-black/20'}`}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── MemoRow ─────────────────────────────────────────────────────────────────
@@ -529,8 +423,8 @@ export default function MemoList() {
   // ── Sub-tab: Timeline | Published ─────────────────────────────────────
   const [subTab, setSubTab] = useState<'timeline' | 'published'>('timeline');
 
-  // ── Published edit modal ──────────────────────────────────────────────
-  const [editModalMemo, setEditModalMemo] = useState<MemoItem | null>(null);
+  // ── Zen editor ───────────────────────────────────────────────────────
+  const [zenMemo, setZenMemo] = useState<MemoItem | null>(null);
 
   // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
@@ -807,25 +701,28 @@ export default function MemoList() {
                   </p>
                 </div>
               )}
-              {isHydrated && publishedMemos.map((memo) => (
-                <div
-                  key={memo.id}
-                  onClick={() => setEditModalMemo(memo)}
-                  className={`px-5 py-4 border-b cursor-pointer transition-colors ${dk ? 'border-white/[0.07] active:bg-white/[0.04]' : 'border-black/[0.06] active:bg-black/[0.025]'}`}
-                >
-                  <h3 className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/88' : 'text-black/88'}`}>
-                    {memo.title}
-                  </h3>
-                  {memo.text && (
-                    <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-2 ${dk ? 'text-white/45' : 'text-black/42'}`}>
-                      {memo.text}
+              {isHydrated && publishedMemos.map((memo) => {
+                const preview = stripMarkdown(memo.text);
+                return (
+                  <div
+                    key={memo.id}
+                    onClick={() => setZenMemo(memo)}
+                    className={`px-5 py-4 border-b cursor-pointer transition-colors ${dk ? 'border-white/[0.07] active:bg-white/[0.04]' : 'border-black/[0.06] active:bg-black/[0.025]'}`}
+                  >
+                    <h3 className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/88' : 'text-black/88'}`}>
+                      {memo.title}
+                    </h3>
+                    {preview && (
+                      <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-2 ${dk ? 'text-white/45' : 'text-black/42'}`}>
+                        {preview}
+                      </p>
+                    )}
+                    <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
+                      {formatTimestamp(memo.createdAt)}
                     </p>
-                  )}
-                  <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
-                    {formatTimestamp(memo.createdAt)}
-                  </p>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
               <div className="h-8" />
             </>
           ) : (
@@ -942,15 +839,13 @@ export default function MemoList() {
         </div>
       )}
 
-      {/* ── Published edit modal ─────────────────────────────────────── */}
-      {editModalMemo && (
-        <PublishedEditModal
-          memo={editModalMemo}
-          dk={dk}
-          onClose={() => setEditModalMemo(null)}
+      {/* ── Zen editor (full-screen, slide from right) ───────────────── */}
+      {zenMemo && (
+        <ZenEditor
+          memo={zenMemo}
+          onBack={() => setZenMemo(null)}
           onSave={(title, body) => {
-            updateMemo(editModalMemo.id, { title: title || null, text: body, status: 'PUBLISH' });
-            setEditModalMemo(null);
+            updateMemo(zenMemo.id, { title: title || null, text: body, status: 'PUBLISH' });
           }}
         />
       )}
