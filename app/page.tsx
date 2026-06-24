@@ -25,11 +25,18 @@ function AppContent() {
   const dk = settings.darkMode;
 
   // --vh: real visible viewport height in px / 100.
-  // window.innerHeight alone misses iOS URL-bar show/hide (no resize event).
-  // visualViewport.resize covers that gap and also fires for keyboard / rotation.
+  // In PWA standalone mode, visualViewport.height subtracts a phantom browser
+  // toolbar that doesn't exist — window.innerHeight is the reliable value there.
+  // In normal browser mode, visualViewport.resize catches iOS URL-bar changes
+  // that window.resize misses.
   useEffect(() => {
     const setScreenSize = () => {
-      const vh = (window.visualViewport?.height ?? window.innerHeight) * 0.01;
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      const vh = isStandalone
+        ? window.innerHeight * 0.01
+        : (window.visualViewport?.height ?? window.innerHeight) * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
     setScreenSize();

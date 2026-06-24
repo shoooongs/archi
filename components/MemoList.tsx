@@ -844,7 +844,7 @@ export default function MemoList() {
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
       {showInputCard && (
-        <div className="absolute bottom-0 left-0 right-0">
+        <div className="pwa-input-anchor">
           {/* Input card — sits above the safe-area fill */}
           <div className="max-w-2xl mx-auto px-4 pt-2">
             <div
