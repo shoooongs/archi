@@ -72,9 +72,17 @@ export interface ZenEditorProps {
   onSave: (title: string, body: string) => void;
 }
 
+const FONT_SIZE_MAP: Record<string, string> = {
+  sm:   '0.75rem',
+  base: '0.875rem',
+  lg:   '1rem',
+  xl:   '1.125rem',
+};
+
 export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   const { state } = useStore();
-  const dk = state.settings.darkMode;
+  const dk       = state.settings.darkMode;
+  const fontSize = FONT_SIZE_MAP[state.settings.fontSize] ?? '0.875rem';
 
   const [title,       setTitle]       = useState(memo.title ?? '');
   const [isDirty,     setIsDirty]     = useState(false);
@@ -182,47 +190,46 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   return (
     <div
       className={`fixed inset-0 z-[80] flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
-      style={{
-        paddingTop:    'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        transform,
-        transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-      }}
+      style={{ transform, transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
     >
-      {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className={`relative flex items-center justify-between px-4 py-2 flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}>
-        <button
-          onClick={handleBack}
-          className={`flex items-center gap-1.5 text-xs transition-colors ${dk ? 'text-white/42 hover:text-white/72' : 'text-black/38 hover:text-black/65'}`}
-        >
-          <BackIcon />
-          <span>뒤로</span>
-        </button>
+      {/* ── Top bar — fixed, with safe-area-inset-top ────────────────────── */}
+      <div
+        className={`flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="relative flex items-center justify-between px-4 py-2">
+          <button
+            onClick={handleBack}
+            className={`flex items-center gap-1.5 text-xs transition-colors ${dk ? 'text-white/42 hover:text-white/72' : 'text-black/38 hover:text-black/65'}`}
+          >
+            <BackIcon />
+            <span>뒤로</span>
+          </button>
 
-        {/* Save status — centered */}
-        <span className={`absolute left-1/2 -translate-x-1/2 text-[0.64rem] font-medium pointer-events-none transition-colors duration-300 ${
-          isDirty
-            ? dk ? 'text-amber-400/80' : 'text-amber-600/76'
-            : dk ? 'text-emerald-400/68' : 'text-emerald-600/68'
-        }`}>
-          {isDirty ? '수정 중' : '저장됨'}
-        </span>
-
-        <button
-          onClick={handleSave}
-          disabled={!isDirty}
-          className={`text-xs font-semibold transition-all ${
+          <span className={`absolute left-1/2 -translate-x-1/2 text-[0.64rem] font-medium pointer-events-none transition-colors duration-300 ${
             isDirty
-              ? dk ? 'text-white/80 hover:text-white' : 'text-black/70 hover:text-black'
-              : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
-          }`}
-        >
-          저장
-        </button>
+              ? dk ? 'text-amber-400/80' : 'text-amber-600/76'
+              : dk ? 'text-emerald-400/68' : 'text-emerald-600/68'
+          }`}>
+            {isDirty ? '수정 중' : '저장됨'}
+          </span>
+
+          <button
+            onClick={handleSave}
+            disabled={!isDirty}
+            className={`text-xs font-semibold transition-all ${
+              isDirty
+                ? dk ? 'text-white/80 hover:text-white' : 'text-black/70 hover:text-black'
+                : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
+            }`}
+          >
+            저장
+          </button>
+        </div>
       </div>
 
-      {/* ── Formatting toolbar ──────────────────────────────────────────── */}
-      <div className={`flex items-center px-2.5 py-1 flex-shrink-0 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
+      {/* ── Formatting toolbar — fixed below top bar ─────────────────────── */}
+      <div className={`flex-shrink-0 flex items-center px-2.5 py-1 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
         {TOOLBAR.map((item) => {
           const { id, label, tag, title: tip, cmd } = item;
           if (label === '|') {
@@ -249,11 +256,14 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
         })}
       </div>
 
-      {/* ── Editor content ───────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
+      {/* ── Editor content — scrollable ──────────────────────────────────── */}
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ fontSize, paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         <div className="max-w-2xl mx-auto px-5 pt-5 pb-16">
 
-          {/* Title */}
+          {/* Title — 1.4em relative to editor fontSize */}
           <input
             type="text"
             value={title}
@@ -263,14 +273,14 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
             autoComplete="off"
             className={[
               'w-full bg-transparent outline-none font-bold tracking-tight mb-4 block',
-              'text-[1.08rem] leading-snug',
+              'text-[1.4em] leading-snug',
               dk ? 'text-white/92 placeholder:text-white/16' : 'text-black/90 placeholder:text-black/14',
             ].join(' ')}
           />
 
           <div className={`mb-4 border-t ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`} />
 
-          {/* contentEditable body */}
+          {/* contentEditable body — inherits fontSize from parent */}
           <div
             ref={editorRef}
             contentEditable
@@ -282,7 +292,6 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
               'leading-relaxed tracking-tight',
               dk ? `${textBase} rich-editor-dk` : textBase,
             ].join(' ')}
-            style={{ fontSize: '0.75rem' }}
           />
 
         </div>
