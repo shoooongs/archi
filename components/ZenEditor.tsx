@@ -47,16 +47,21 @@ interface ToolbarItem {
   label: string;
   tag: string;
   title: string;
+  cmd?: string; // execCommand for inline formats (bold, underline, etc.)
 }
 
 const TOOLBAR: ToolbarItem[] = [
-  { id: 'h1',  label: 'H1', tag: 'h1',         title: '제목 1' },
-  { id: 'h2',  label: 'H2', tag: 'h2',         title: '제목 2' },
-  { id: 'h3',  label: 'H3', tag: 'h3',         title: '제목 3' },
-  { id: 'p',   label: 'P',  tag: 'p',          title: '본문'   },
-  { id: 'sep', label: '|',  tag: '',            title: ''       },
-  { id: 'bq',  label: '❝',  tag: 'blockquote', title: '인용구' },
-  { id: 'hr',  label: '—',  tag: 'hr',         title: '구분선' },
+  { id: 'p',    label: 'P',  tag: 'p',          title: '본문'   },
+  { id: 'h1',   label: 'H1', tag: 'h1',         title: '제목 1' },
+  { id: 'h2',   label: 'H2', tag: 'h2',         title: '제목 2' },
+  { id: 'h3',   label: 'H3', tag: 'h3',         title: '제목 3' },
+  { id: 'sep1', label: '|',  tag: '',            title: ''       },
+  { id: 'bq',   label: '❝',  tag: 'blockquote', title: '인용구' },
+  { id: 'hr',   label: '—',  tag: 'hr',         title: '구분선' },
+  { id: 'sep2', label: '|',  tag: '',            title: ''       },
+  { id: 'bold', label: 'B',  tag: '',            title: '굵게',   cmd: 'bold'                  },
+  { id: 'ul',   label: 'U',  tag: '',            title: '밑줄',   cmd: 'underline'             },
+  { id: 'list', label: '•',  tag: '',            title: '목록',   cmd: 'insertUnorderedList'   },
 ];
 
 // ─── ZenEditor ───────────────────────────────────────────────────────────────
@@ -127,7 +132,7 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     setTimeout(onBack, 270);
   }
 
-  function applyBlock(tag: string) {
+  function applyFormat(item: ToolbarItem) {
     const el = editorRef.current;
     if (!el) return;
 
@@ -142,12 +147,15 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
       sel.addRange(range);
     }
 
-    if (tag === 'hr') {
+    if (item.cmd) {
+      // Inline formats: bold, underline, insertUnorderedList
+      document.execCommand(item.cmd, false);
+    } else if (item.tag === 'hr') {
       document.execCommand('insertHorizontalRule', false);
     } else {
       const current = getAncestorBlockTag(el);
       // Toggle: if already this block type (except P), revert to P
-      const target = current === tag && tag !== 'p' ? 'p' : tag;
+      const target = current === item.tag && item.tag !== 'p' ? 'p' : item.tag;
       document.execCommand('formatBlock', false, target);
     }
 
@@ -215,20 +223,25 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
 
       {/* ── Formatting toolbar ──────────────────────────────────────────── */}
       <div className={`flex items-center px-2.5 py-1 flex-shrink-0 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
-        {TOOLBAR.map(({ id, label, tag, title: tip }) => {
+        {TOOLBAR.map((item) => {
+          const { id, label, tag, title: tip, cmd } = item;
           if (label === '|') {
             return (
               <span key={id} className={`w-px h-3.5 mx-1 flex-shrink-0 ${dk ? 'bg-white/12' : 'bg-black/10'}`} />
             );
           }
-          const isActive = tag !== 'hr' && activeBlock === tag;
+          const isActive = cmd ? false : tag !== 'hr' && activeBlock === tag;
           return (
             <button
               key={id}
               title={tip}
-              onMouseDown={(e) => { e.preventDefault(); applyBlock(tag); }}
-              onTouchStart={(e) => { e.preventDefault(); applyBlock(tag); }}
-              className={toolbarBtnCls(isActive)}
+              onMouseDown={(e) => { e.preventDefault(); applyFormat(item); }}
+              onTouchStart={(e) => { e.preventDefault(); applyFormat(item); }}
+              className={[
+                toolbarBtnCls(isActive),
+                id === 'bold' ? 'font-bold' : '',
+                id === 'ul'   ? 'underline' : '',
+              ].join(' ')}
             >
               {label}
             </button>
@@ -266,9 +279,10 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
             data-placeholder="내용을 입력하세요..."
             className={[
               'rich-editor',
-              'leading-relaxed tracking-tight text-sm',
+              'leading-relaxed tracking-tight',
               dk ? `${textBase} rich-editor-dk` : textBase,
             ].join(' ')}
+            style={{ fontSize: '0.75rem' }}
           />
 
         </div>
