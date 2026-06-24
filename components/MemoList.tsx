@@ -502,9 +502,15 @@ export default function MemoList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated]);
 
-  // Scroll to bottom when a new memo is added
+  // Scroll to bottom when a new memo is added.
+  // double-rAF ensures the new row is fully laid out before reading scrollHeight,
+  // so the scroll reaches the bottom of the new memo without clipping.
   useEffect(() => {
-    if (memos.length > prevLengthRef.current) scrollToBottom(true);
+    if (memos.length > prevLengthRef.current) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollToBottom(true));
+      });
+    }
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
@@ -592,7 +598,6 @@ export default function MemoList() {
     addCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
     setAddDraft(e.target.value);
     autoResize(e.target);
-    triggerTypingState();
     if (sc && savedTop !== undefined) {
       sc.scrollTop = savedTop;
       requestAnimationFrame(() => { if (sc) sc.scrollTop = savedTop; });
