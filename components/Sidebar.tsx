@@ -469,7 +469,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
           {/* All Memos */}
           <div className={navItemCls(activeView === 'all')} onClick={() => selectAndClose('all')}>
             <span className={dotCls(activeView === 'all')} />
-            <span className={`text-sm ${activeView === 'all' ? 'font-medium' : 'font-normal'}`}>모든 메모</span>
+            <span className={activeView === 'all' ? 'font-medium' : 'font-normal'}>모든 메모</span>
           </div>
 
           {/* Divider */}
@@ -492,7 +492,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
               >
                 <span className={dotCls(isActive)} />
                 <FolderIcon />
-                <span className={`text-sm flex-1 truncate ${isActive ? 'font-medium' : 'font-normal'}`}>{folder.name}</span>
+                <span className={`flex-1 truncate ${isActive ? 'font-medium' : 'font-normal'}`}>{folder.name}</span>
                 {/* Delete folder button */}
                 <button
                   onClick={(e) => {
@@ -521,7 +521,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
                 onKeyDown={handleFolderKeyDown}
                 placeholder="폴더 이름..."
                 spellCheck={false}
-                className={`flex-1 bg-transparent outline-none text-sm ${dk ? 'text-white/80 placeholder:text-white/28' : 'text-black/75 placeholder:text-black/25'}`}
+                className={`flex-1 bg-transparent outline-none ${dk ? 'text-white/80 placeholder:text-white/28' : 'text-black/75 placeholder:text-black/25'}`}
               />
               <button onClick={confirmAddFolder}
                 className={`p-0.5 rounded transition-colors ${dk ? 'text-white/55 hover:text-white/85' : 'text-black/45 hover:text-black/75'}`}
@@ -553,7 +553,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
           <div className={navItemCls(activeView === 'trash')} onClick={() => selectAndClose('trash')}>
             <span className={dotCls(activeView === 'trash')} />
             <TrashIcon />
-            <span className={`text-sm ${activeView === 'trash' ? 'font-medium' : 'font-normal'}`}>휴지통</span>
+            <span className={activeView === 'trash' ? 'font-medium' : 'font-normal'}>휴지통</span>
           </div>
 
         </nav>
@@ -565,7 +565,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left ${dk ? 'text-white/38 hover:text-white/62 hover:bg-white/8' : 'text-black/32 hover:text-black/58 hover:bg-black/5'}`}
           >
             <GearIcon />
-            <span className="text-sm">설정</span>
+            <span>설정</span>
           </button>
         </div>
 

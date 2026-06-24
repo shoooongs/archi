@@ -391,10 +391,17 @@ function MemoRow({
             </>
 
           ) : (
-            // ── DUMP / OFF — strip HTML tags, clamp to 5 lines ──
-            <p className={`leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/80' : 'text-black/75'}`}>
-              {isMounted ? stripHtml(memo.text) : ''}
-            </p>
+            // ── DUMP / OFF — show title if present, strip HTML, clamp to 5 lines ──
+            <>
+              {memo.title && (
+                <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
+                  {memo.title}
+                </p>
+              )}
+              <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
+              </p>
+            </>
           )}
 
           {/* Empty on server; filled after client mount to avoid hydration mismatch */}
@@ -782,7 +789,7 @@ export default function MemoList() {
               ))}
 
               {/* Sentinel — extra space so last memo clears the input bar */}
-              <div className={showInputCard ? 'h-[180px]' : 'h-2'} />
+              <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
             </>
           )}
 
