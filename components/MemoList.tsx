@@ -683,7 +683,7 @@ export default function MemoList() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col flex-1 overflow-hidden relative">
+    <div className="flex flex-col flex-1 overflow-hidden">
 
       {/* ── Sidebar drawer ──────────────────────────────────────────── */}
       <Sidebar
@@ -790,7 +790,7 @@ export default function MemoList() {
               />
             ))}
 
-            <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
+            <div className="h-2" />
           </div>
         </div>
 
@@ -842,10 +842,10 @@ export default function MemoList() {
 
       </div>
 
-      {/* ── Floating glassmorphism input card ───────────────────────── */}
+      {/* ── Glassmorphism input card ─────────────────────────────────── */}
       {showInputCard && (
         <div
-          className="absolute bottom-0 left-0 right-0"
+          className="flex-shrink-0"
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
             paddingTop: '0.5rem',
