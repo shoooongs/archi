@@ -330,7 +330,7 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
 
   return (
     <div
-      className={`fixed inset-x-0 top-0 z-[80] h-dvh flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
+      className={`fixed inset-0 z-[80] flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
       style={{
         transform,
         transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',

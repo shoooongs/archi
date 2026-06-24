@@ -50,7 +50,7 @@ function AppContent() {
 
   return (
     <div
-      className="h-dvh flex flex-col overflow-hidden"
+      className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ ...bgStyle, transition: 'background-color 0.2s ease' }}
     >
       {/* MemoList owns the nav bar (All / Published / ⚙️) and settings panel */}
