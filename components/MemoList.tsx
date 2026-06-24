@@ -382,18 +382,18 @@ function MemoRow({
           ) : memo.status === 'PUBLISH' ? (
             // ── Published — strip HTML for plain timeline display ──────────
             <>
-              <p className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/90' : 'text-black/90'}`}>
+              <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
                 {memo.title}
               </p>
-              <p className={`mt-1.5 leading-relaxed break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
-                {isMounted ? stripHtml(memo.text) : memo.text}
+              <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
               </p>
             </>
 
           ) : (
-            // ── DUMP / OFF ──
-            <p className={`leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/80' : 'text-black/75'}`}>
-              {memo.text}
+            // ── DUMP / OFF — strip HTML tags, clamp to 5 lines ──
+            <p className={`leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/80' : 'text-black/75'}`}>
+              {isMounted ? stripHtml(memo.text) : ''}
             </p>
           )}
 
@@ -708,11 +708,11 @@ export default function MemoList() {
                     onClick={() => setZenMemo(memo)}
                     className={`px-5 py-4 border-b cursor-pointer transition-colors ${dk ? 'border-white/[0.07] active:bg-white/[0.04]' : 'border-black/[0.06] active:bg-black/[0.025]'}`}
                   >
-                    <h3 className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/88' : 'text-black/88'}`}>
+                    <h3 className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/88' : 'text-black/88'}`}>
                       {memo.title}
                     </h3>
                     {preview && (
-                      <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-2 ${dk ? 'text-white/45' : 'text-black/42'}`}>
+                      <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-5 ${dk ? 'text-white/45' : 'text-black/42'}`}>
                         {preview}
                       </p>
                     )}

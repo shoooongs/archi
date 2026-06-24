@@ -12,10 +12,10 @@ const FONT_FAMILY: Record<FontFamily, string> = {
 };
 
 const FONT_SIZE: Record<FontSize, string> = {
-  sm:   '0.875rem',
-  base: '1rem',
-  lg:   '1.125rem',
-  xl:   '1.25rem',
+  sm:   '0.625rem',  // 10px (S)
+  base: '0.75rem',   // 12px (M)
+  lg:   '0.875rem',  // 14px (L)
+  xl:   '1rem',      // 16px (XL)
 };
 
 function AppContent() {
