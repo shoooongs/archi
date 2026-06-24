@@ -8,7 +8,7 @@ import type { MemoItem } from '@/lib/types';
 
 function BackIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 12H5M12 19l-7-7 7-7" />
     </svg>
   );
@@ -197,16 +197,16 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
         className={`flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="relative flex items-center justify-between px-4 py-2">
+        <div className="relative flex items-center justify-between px-3 py-1.5">
           <button
             onClick={handleBack}
-            className={`flex items-center gap-1.5 text-xs transition-colors ${dk ? 'text-white/42 hover:text-white/72' : 'text-black/38 hover:text-black/65'}`}
+            className={`flex items-center gap-1.5 p-2 rounded-xl text-sm transition-colors ${dk ? 'text-white/42 hover:text-white/72 hover:bg-white/8' : 'text-black/38 hover:text-black/65 hover:bg-black/6'}`}
           >
             <BackIcon />
             <span>뒤로</span>
           </button>
 
-          <span className={`absolute left-1/2 -translate-x-1/2 text-[0.64rem] font-medium pointer-events-none transition-colors duration-300 ${
+          <span className={`absolute left-1/2 -translate-x-1/2 text-xs font-medium pointer-events-none transition-colors duration-300 ${
             isDirty
               ? dk ? 'text-amber-400/80' : 'text-amber-600/76'
               : dk ? 'text-emerald-400/68' : 'text-emerald-600/68'
@@ -217,9 +217,9 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
           <button
             onClick={handleSave}
             disabled={!isDirty}
-            className={`text-xs font-semibold transition-all ${
+            className={`p-2 rounded-xl text-sm font-semibold transition-all ${
               isDirty
-                ? dk ? 'text-white/80 hover:text-white' : 'text-black/70 hover:text-black'
+                ? dk ? 'text-white/80 hover:text-white hover:bg-white/8' : 'text-black/70 hover:text-black hover:bg-black/6'
                 : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
             }`}
           >
