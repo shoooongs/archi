@@ -24,22 +24,24 @@ function AppContent() {
 
   const dk = settings.darkMode;
 
-  // --vh: real visible viewport height per px (window.innerHeight / 100).
-  // dvh/svh alone can't fully compensate for the mobile browser chrome
-  // transition lag; binding to window.innerHeight gives the ground truth.
+  // --vh: real visible viewport height in px / 100.
+  // window.innerHeight alone misses iOS URL-bar show/hide (no resize event).
+  // visualViewport.resize covers that gap and also fires for keyboard / rotation.
   useEffect(() => {
-    const update = () => {
-      document.documentElement.style.setProperty(
-        '--vh',
-        `${window.innerHeight * 0.01}px`,
-      );
+    const setScreenSize = () => {
+      const vh = (window.visualViewport?.height ?? window.innerHeight) * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
-    update();
-    window.addEventListener('resize', update);
-    window.addEventListener('orientationchange', update);
+    setScreenSize();
+    window.addEventListener('load', setScreenSize);
+    window.addEventListener('resize', setScreenSize);
+    window.addEventListener('orientationchange', setScreenSize);
+    window.visualViewport?.addEventListener('resize', setScreenSize);
     return () => {
-      window.removeEventListener('resize', update);
-      window.removeEventListener('orientationchange', update);
+      window.removeEventListener('load', setScreenSize);
+      window.removeEventListener('resize', setScreenSize);
+      window.removeEventListener('orientationchange', setScreenSize);
+      window.visualViewport?.removeEventListener('resize', setScreenSize);
     };
   }, []);
 

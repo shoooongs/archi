@@ -48,7 +48,7 @@ export default function RootLayout({
         {/* Set --vh synchronously before first paint so AppContent is sized
             correctly without a visible layout shift on mobile */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px');})()` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var h=window.visualViewport?window.visualViewport.height:window.innerHeight;document.documentElement.style.setProperty('--vh',(h*0.01)+'px');})()` }} />
         {/* Explicit viewport — insurance alongside Next.js viewport export */}
         <meta
           name="viewport"
