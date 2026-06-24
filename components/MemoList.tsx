@@ -615,58 +615,63 @@ export default function MemoList() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col flex-1 overflow-hidden relative">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
-      {/* ── Scrollable timeline ─────────────────────────────────────── */}
-      <div ref={listRef} className="flex-1 overflow-y-auto">
-
-        {/* Nav bar */}
-        <div
-          className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        >
-          <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
-            <div className="flex items-center gap-6">
-              {(['ALL', 'PUBLISHED_ONLY'] as ViewMode[]).map((mode) => {
-                const label  = mode === 'ALL' ? 'All' : 'Published';
-                const active = viewMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    className={[
-                      'text-xs tracking-wide transition-all duration-200 pb-px',
-                      active
-                        ? `font-semibold border-b ${dk ? 'text-white/80 border-white/55' : 'text-black/75 border-black/50'}`
-                        : `font-normal border-b border-transparent ${dk ? 'text-white/35 hover:text-white/60' : 'text-black/30 hover:text-black/50'}`,
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="ml-auto flex items-center gap-0.5">
-              <button
-                onClick={() => updateSettings({ darkMode: !dk })}
-                aria-label={dk ? '라이트 모드로 전환' : '다크 모드로 전환'}
-                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/45 hover:text-white/80 hover:bg-white/10' : 'text-black/30 hover:text-black/60 hover:bg-black/5'}`}
-              >
-                {dk ? <SunIcon /> : <MoonIcon />}
-              </button>
-              <button
-                onClick={() => setSettingsOpen((v) => !v)}
-                aria-label={settingsOpen ? '설정 닫기' : '설정 열기'}
-                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/5'}`}
-              >
-                <GearIcon open={settingsOpen} />
-              </button>
-            </div>
+      {/* ── Header — nav + settings, always fixed above scroll ───────── */}
+      <div
+        className={`flex-shrink-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
+          <div className="flex items-center gap-6">
+            {(['ALL', 'PUBLISHED_ONLY'] as ViewMode[]).map((mode) => {
+              const label  = mode === 'ALL' ? 'All' : 'Published';
+              const active = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={[
+                    'text-xs tracking-wide transition-all duration-200 pb-px',
+                    active
+                      ? `font-semibold border-b ${dk ? 'text-white/80 border-white/55' : 'text-black/75 border-black/50'}`
+                      : `font-normal border-b border-transparent ${dk ? 'text-white/35 hover:text-white/60' : 'text-black/30 hover:text-black/50'}`,
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
-          {settingsOpen && <SettingsPanel />}
+
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              onClick={() => updateSettings({ darkMode: !dk })}
+              aria-label={dk ? '라이트 모드로 전환' : '다크 모드로 전환'}
+              className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/45 hover:text-white/80 hover:bg-white/10' : 'text-black/30 hover:text-black/60 hover:bg-black/5'}`}
+            >
+              {dk ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <button
+              onClick={() => setSettingsOpen((v) => !v)}
+              aria-label={settingsOpen ? '설정 닫기' : '설정 열기'}
+              className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/5'}`}
+            >
+              <GearIcon open={settingsOpen} />
+            </button>
+          </div>
         </div>
 
+        {/* Settings panel — capped height so it never exceeds viewport */}
+        {settingsOpen && (
+          <div className="overflow-y-auto" style={{ maxHeight: '45vh' }}>
+            <SettingsPanel />
+          </div>
+        )}
+      </div>
+
+      {/* ── Scrollable timeline — fills all remaining space ──────────── */}
+      <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-2xl mx-auto">
 
           {isHydrated && displayedMemos.length === 0 && (
@@ -710,19 +715,15 @@ export default function MemoList() {
             />
           ))}
 
-          {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
-          <div className={viewMode === 'ALL' ? 'h-[80px]' : 'h-2'} />
+          <div className="h-3" />
         </div>
       </div>
 
-      {/* ── Floating glassmorphism input card ───────────────────────── */}
+      {/* ── Bottom input bar — always fixed below scroll ──────────────── */}
       {viewMode === 'ALL' && (
         <div
-          className="absolute bottom-0 left-0 right-0"
-          style={{
-            paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
-            paddingTop: '0.5rem',
-          }}
+          className={`flex-shrink-0 border-t ${dk ? 'border-white/[0.07] bg-neutral-900/80' : 'border-black/[0.06] bg-white/70'} backdrop-blur-md`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)', paddingTop: '0.5rem' }}
         >
           <div className="max-w-2xl mx-auto px-4">
             <div

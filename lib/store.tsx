@@ -18,7 +18,7 @@ type Action =
 
 const DEFAULT_SETTINGS: AppSettings = {
   fontFamily: 'sans',
-  fontSize: 'sm',
+  fontSize: 'base',
   bgMode: 'color',
   bgColor: '#f5f5f4',
   bgImage: null,
