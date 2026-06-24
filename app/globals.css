@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Fallback until JS sets the real value on first paint */
+  --vh: 1vh;
 }
 
 @theme inline {
