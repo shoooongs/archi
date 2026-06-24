@@ -128,7 +128,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url;
-    a.download = `mind-dump-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `archi-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -140,7 +140,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
       if (!trimmed) return;
       const parsed = JSON.parse(trimmed) as Record<string, unknown>;
       if (!Array.isArray(parsed.memos)) {
-        setImportError('올바른 Mind Dump JSON 형식이 아닙니다.');
+        setImportError('올바른 Archi JSON 형식이 아닙니다.');
         return;
       }
       type R = Record<string, unknown>;
@@ -454,7 +454,7 @@ export default function Sidebar({ open, onClose, activeView, onSelectView }: Sid
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-4 pb-4">
           <span className={`text-[0.65rem] font-semibold tracking-[0.22em] uppercase ${dk ? 'text-white/28' : 'text-black/22'}`}>
-            Mind Dump
+            Archi
           </span>
           <button onClick={onClose}
             className={`p-1.5 rounded-lg transition-colors ${dk ? 'text-white/28 hover:text-white/58 hover:bg-white/8' : 'text-black/22 hover:text-black/52 hover:bg-black/5'}`}

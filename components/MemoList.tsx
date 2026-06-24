@@ -29,6 +29,29 @@ function HamburgerIcon() {
   );
 }
 
+// Document icon — shown in Timeline view (tap to go to Published)
+function DocIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="13 2 13 9 20 9" />
+      <line x1="9" y1="14" x2="15" y2="14" />
+      <line x1="9" y1="18" x2="15" y2="18" />
+    </svg>
+  );
+}
+
+// Timeline icon — shown in Published view (tap to go back to Timeline)
+function TimelineIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4"  width="18" height="4" rx="1" />
+      <rect x="3" y="10" width="18" height="4" rx="1" />
+      <rect x="3" y="16" width="18" height="4" rx="1" />
+    </svg>
+  );
+}
+
 function SendIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -129,10 +152,10 @@ async function exportMemoAsCard(memo: MemoItem, fontFamilyKey: FontFamily) {
   }
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.font = `11px ${font}`;
-  const brand = 'MIND DUMP';
+  const brand = 'ARCHI';
   ctx.fillText(brand, W - 72 - ctx.measureText(brand).width, H - 68);
   const a = document.createElement('a');
-  a.download = `mind-dump-${Date.now()}.png`;
+  a.download = `archi-${Date.now()}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 }
@@ -654,15 +677,15 @@ export default function MemoList() {
         onSelectView={setActiveView}
       />
 
-      {/* ── Glass header: hamburger(left) + Published(right) ───────── */}
+      {/* ── Transparent iOS-style header ────────────────────────────── */}
       <div
-        className={`flex-shrink-0 z-10 backdrop-blur-md transition-colors duration-200 ${dk ? 'bg-neutral-950/80' : 'bg-white/75'}`}
+        className="flex-shrink-0 z-10"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="px-4 py-2.5 flex items-center justify-between">
+        <div className="px-3 py-2 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`p-1.5 -ml-1 rounded-xl transition-colors ${dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/30 hover:text-black/58 hover:bg-black/5'}`}
+            className={`p-2 rounded-xl transition-colors ${dk ? 'text-white/42 hover:text-white/72 hover:bg-white/8' : 'text-black/32 hover:text-black/62 hover:bg-black/6'}`}
             aria-label="메뉴 열기"
           >
             <HamburgerIcon />
@@ -671,19 +694,14 @@ export default function MemoList() {
           {!isTrashView && (
             <button
               onClick={() => setSubTab(subTab === 'published' ? 'timeline' : 'published')}
-              className={[
-                'px-3 py-1 rounded-full text-xs font-medium transition-all duration-200',
-                'shadow-sm border backdrop-blur-sm',
+              className={`p-2 rounded-xl transition-all duration-200 ${
                 subTab === 'published'
-                  ? dk
-                    ? 'bg-white/85 text-neutral-900 border-white/80'
-                    : 'bg-black/75 text-white border-black/70'
-                  : dk
-                    ? 'bg-white/8 text-white/52 border-white/14 hover:bg-white/14 hover:text-white/78'
-                    : 'bg-black/[0.04] text-black/40 border-black/10 hover:bg-black/8 hover:text-black/62',
-              ].join(' ')}
+                  ? dk ? 'text-white/85 bg-white/10' : 'text-black/78 bg-black/7'
+                  : dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/28 hover:text-black/58 hover:bg-black/6'
+              }`}
+              aria-label={subTab === 'published' ? '타임라인으로' : 'Published로'}
             >
-              Published
+              {subTab === 'published' ? <TimelineIcon /> : <DocIcon />}
             </button>
           )}
         </div>
@@ -787,15 +805,15 @@ export default function MemoList() {
                   onClick={() => setZenMemo(memo)}
                   className={`relative px-5 py-4 cursor-pointer transition-colors ${dk ? 'active:bg-white/[0.04]' : 'active:bg-black/[0.025]'}`}
                 >
-                  <h3 className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/88' : 'text-black/88'}`}>
+                  <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
                     {memo.title}
-                  </h3>
+                  </p>
                   {preview && (
-                    <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-5 ${dk ? 'text-white/45' : 'text-black/42'}`}>
+                    <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
                       {preview}
                     </p>
                   )}
-                  <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
+                  <p className={`mt-2 text-[0.75em] ${dk ? 'text-white/35' : 'text-black/25'}`}>
                     {formatTimestamp(memo.createdAt)}
                   </p>
                   <div className={`absolute bottom-0 left-5 right-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
