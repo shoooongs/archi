@@ -121,6 +121,7 @@ interface StoreCtx {
   addFolder:      (name: string) => void;
   deleteFolder:   (id: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
+  importData:     (jsonString: string) => void;
 }
 
 const StoreContext = createContext<StoreCtx | null>(null);
@@ -156,6 +157,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ memos: state.memos, folders: state.folders, settings: state.settings }));
   }, [state]);
 
+  function importData(jsonString: string) {
+    const parsed = JSON.parse(jsonString) as Record<string, unknown>;
+    const rawMemos   = Array.isArray(parsed.memos)   ? (parsed.memos   as Record<string, unknown>[]) : [];
+    const rawFolders = Array.isArray(parsed.folders) ? (parsed.folders as Record<string, unknown>[]) : [];
+    dispatch({
+      type:     'HYDRATE',
+      memos:    rawMemos.length > 0 ? rawMemos.map(normalizeMemo) : [],
+      folders:  rawFolders.map(normalizeFolder),
+      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings as Partial<AppSettings> ?? {}) },
+    });
+  }
+
   return (
     <StoreContext.Provider value={{
       state,
@@ -165,6 +178,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addFolder:      (name)                  => dispatch({ type: 'ADD_FOLDER', name }),
       deleteFolder:   (id)                    => dispatch({ type: 'DELETE_FOLDER', id }),
       updateSettings: (patch)                 => dispatch({ type: 'UPDATE_SETTINGS', patch }),
+      importData,
     }}>
       {children}
     </StoreContext.Provider>

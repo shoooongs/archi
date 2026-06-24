@@ -8,7 +8,7 @@ import type { MemoItem } from '@/lib/types';
 
 function BackIcon() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 12H5M12 19l-7-7 7-7" />
     </svg>
   );
@@ -16,14 +16,28 @@ function BackIcon() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Convert legacy plain text into HTML paragraphs on first open. */
 function toHtml(text: string): string {
   if (!text.trim()) return '';
-  if (text.includes('<')) return text;               // already HTML from a prior edit
+  if (text.includes('<')) return text;
   return text
     .split(/\n\n+/)
     .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
     .join('');
+}
+
+function getAncestorBlockTag(editor: HTMLDivElement | null): string {
+  if (!editor) return 'p';
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return 'p';
+  let node: Node | null = sel.getRangeAt(0).commonAncestorContainer;
+  while (node && node !== editor) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = (node as HTMLElement).tagName.toLowerCase();
+      if (['h1', 'h2', 'h3', 'blockquote', 'p'].includes(tag)) return tag;
+    }
+    node = node.parentNode;
+  }
+  return 'p';
 }
 
 // ─── Toolbar config ───────────────────────────────────────────────────────────
@@ -31,19 +45,18 @@ function toHtml(text: string): string {
 interface ToolbarItem {
   id: string;
   label: string;
+  tag: string;
   title: string;
-  cmd: string;
-  val?: string;
 }
 
 const TOOLBAR: ToolbarItem[] = [
-  { id: 'p',    label: 'P',  title: '본문',  cmd: 'formatBlock',        val: 'p'  },
-  { id: 'h2',   label: 'H2', title: '제목2', cmd: 'formatBlock',        val: 'h2' },
-  { id: 'h3',   label: 'H3', title: '제목3', cmd: 'formatBlock',        val: 'h3' },
-  { id: 'sep1', label: '|',  title: '',       cmd: ''                              },
-  { id: 'bold', label: 'B',  title: '굵게',  cmd: 'bold'                          },
-  { id: 'ital', label: 'I',  title: '기울게',cmd: 'italic'                        },
-  { id: 'ul',   label: '•',  title: '목록',  cmd: 'insertUnorderedList'           },
+  { id: 'h1',  label: 'H1', tag: 'h1',         title: '제목 1' },
+  { id: 'h2',  label: 'H2', tag: 'h2',         title: '제목 2' },
+  { id: 'h3',  label: 'H3', tag: 'h3',         title: '제목 3' },
+  { id: 'p',   label: 'P',  tag: 'p',          title: '본문'   },
+  { id: 'sep', label: '|',  tag: '',            title: ''       },
+  { id: 'bq',  label: '❝',  tag: 'blockquote', title: '인용구' },
+  { id: 'hr',  label: '—',  tag: 'hr',         title: '구분선' },
 ];
 
 // ─── ZenEditor ───────────────────────────────────────────────────────────────
@@ -58,13 +71,14 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   const { state } = useStore();
   const dk = state.settings.darkMode;
 
-  const [title,   setTitle]   = useState(memo.title ?? '');
-  const [isDirty, setIsDirty] = useState(false);
-  const [entered, setEntered] = useState(false);
-  const [exiting, setExiting] = useState(false);
+  const [title,       setTitle]       = useState(memo.title ?? '');
+  const [isDirty,     setIsDirty]     = useState(false);
+  const [entered,     setEntered]     = useState(false);
+  const [exiting,     setExiting]     = useState(false);
+  const [activeBlock, setActiveBlock] = useState<string>('p');
 
-  const editorRef    = useRef<HTMLDivElement>(null);
-  const savedHtmlRef = useRef(toHtml(memo.text));
+  const editorRef     = useRef<HTMLDivElement>(null);
+  const savedHtmlRef  = useRef(toHtml(memo.text));
   const savedTitleRef = useRef(memo.title ?? '');
 
   // Slide-in from right
@@ -77,11 +91,18 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     const el = editorRef.current;
     if (!el) return;
     el.innerHTML = savedHtmlRef.current;
-    // Ensure editor starts with at least an empty <p> for cursor
-    if (!el.innerHTML) {
-      el.innerHTML = '<p><br></p>';
-    }
+    if (!el.innerHTML) el.innerHTML = '<p><br></p>';
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track current block format on selection change
+  useEffect(() => {
+    function onSelChange() {
+      if (!editorRef.current) return;
+      setActiveBlock(getAncestorBlockTag(editorRef.current));
+    }
+    document.addEventListener('selectionchange', onSelChange);
+    return () => document.removeEventListener('selectionchange', onSelChange);
+  }, []);
 
   function recomputeDirty(overrideTitle?: string) {
     const html = editorRef.current?.innerHTML ?? '';
@@ -92,7 +113,6 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   function handleSave() {
     const html = editorRef.current?.innerHTML ?? '';
     const t    = title.trim();
-    // Strip tags to check if there's real content
     const hasText = html.replace(/<[^>]*>/g, '').trim();
     if (!hasText) return;
     onSave(t, html);
@@ -107,22 +127,49 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     setTimeout(onBack, 270);
   }
 
-  function applyFormat(cmd: string, val?: string) {
-    if (!cmd) return;
+  function applyBlock(tag: string) {
     const el = editorRef.current;
     if (!el) return;
+
+    // Preserve selection across focus call
+    const sel   = window.getSelection();
+    const range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+
     el.focus();
-    document.execCommand(cmd, false, val);
-    el.focus();
-    recomputeDirty();
+
+    if (range && sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    if (tag === 'hr') {
+      document.execCommand('insertHorizontalRule', false);
+    } else {
+      const current = getAncestorBlockTag(el);
+      // Toggle: if already this block type (except P), revert to P
+      const target = current === tag && tag !== 'p' ? 'p' : tag;
+      document.execCommand('formatBlock', false, target);
+    }
+
+    requestAnimationFrame(() => {
+      if (!el) return;
+      setActiveBlock(getAncestorBlockTag(el));
+      recomputeDirty();
+    });
   }
 
   const transform = exiting ? 'translateX(100%)' : entered ? 'translateX(0)' : 'translateX(100%)';
+  const textBase  = dk ? 'text-white/72' : 'text-black/68';
 
-  const textBase  = dk ? 'text-white/72'  : 'text-black/68';
-  const subtleBtn = dk
-    ? 'text-white/38 hover:text-white/72 hover:bg-white/8 active:bg-white/15'
-    : 'text-black/36 hover:text-black/68 hover:bg-black/6 active:bg-black/12';
+  function toolbarBtnCls(isActive: boolean) {
+    const base = 'px-2 py-1.5 rounded text-xs transition-colors flex-shrink-0 font-medium';
+    if (isActive) {
+      return `${base} ${dk ? 'bg-white/14 text-white/85' : 'bg-black/8 text-black/75'}`;
+    }
+    return `${base} ${dk
+      ? 'text-white/35 hover:text-white/68 hover:bg-white/8 active:bg-white/14'
+      : 'text-black/32 hover:text-black/65 hover:bg-black/5 active:bg-black/10'}`;
+  }
 
   return (
     <div
@@ -135,20 +182,20 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
       }}
     >
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className={`relative flex items-center justify-between px-4 py-2.5 flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}>
+      <div className={`relative flex items-center justify-between px-4 py-2 flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}>
         <button
           onClick={handleBack}
-          className={`flex items-center gap-1.5 text-sm transition-colors ${dk ? 'text-white/42 hover:text-white/72' : 'text-black/38 hover:text-black/65'}`}
+          className={`flex items-center gap-1.5 text-xs transition-colors ${dk ? 'text-white/42 hover:text-white/72' : 'text-black/38 hover:text-black/65'}`}
         >
           <BackIcon />
           <span>뒤로</span>
         </button>
 
         {/* Save status — centered */}
-        <span className={`absolute left-1/2 -translate-x-1/2 text-[0.67rem] font-medium pointer-events-none transition-colors duration-300 ${
+        <span className={`absolute left-1/2 -translate-x-1/2 text-[0.64rem] font-medium pointer-events-none transition-colors duration-300 ${
           isDirty
-            ? dk ? 'text-amber-400/82' : 'text-amber-600/78'
-            : dk ? 'text-emerald-400/72' : 'text-emerald-600/70'
+            ? dk ? 'text-amber-400/80' : 'text-amber-600/76'
+            : dk ? 'text-emerald-400/68' : 'text-emerald-600/68'
         }`}>
           {isDirty ? '수정 중' : '저장됨'}
         </span>
@@ -156,10 +203,10 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
         <button
           onClick={handleSave}
           disabled={!isDirty}
-          className={`text-sm font-semibold transition-all ${
+          className={`text-xs font-semibold transition-all ${
             isDirty
               ? dk ? 'text-white/80 hover:text-white' : 'text-black/70 hover:text-black'
-              : dk ? 'text-white/18 cursor-not-allowed' : 'text-black/15 cursor-not-allowed'
+              : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
           }`}
         >
           저장
@@ -167,27 +214,21 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
       </div>
 
       {/* ── Formatting toolbar ──────────────────────────────────────────── */}
-      <div className={`flex items-center px-3 py-1.5 flex-shrink-0 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
-        {TOOLBAR.map(({ id, label, title: tip, cmd, val }) => {
+      <div className={`flex items-center px-2.5 py-1 flex-shrink-0 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
+        {TOOLBAR.map(({ id, label, tag, title: tip }) => {
           if (label === '|') {
             return (
-              <span key={id} className={`w-px h-4 mx-1 flex-shrink-0 ${dk ? 'bg-white/14' : 'bg-black/12'}`} />
+              <span key={id} className={`w-px h-3.5 mx-1 flex-shrink-0 ${dk ? 'bg-white/12' : 'bg-black/10'}`} />
             );
           }
+          const isActive = tag !== 'hr' && activeBlock === tag;
           return (
             <button
               key={id}
               title={tip}
-              onMouseDown={(e) => { e.preventDefault(); applyFormat(cmd, val ?? undefined); }}
-              onTouchStart={(e) => { e.preventDefault(); applyFormat(cmd, val ?? undefined); }}
-              className={[
-                'px-2.5 py-1.5 rounded text-xs transition-colors flex-shrink-0',
-                id === 'bold' ? 'font-bold'   : '',
-                id === 'ital' ? 'italic'       : '',
-                id === 'h2'   ? 'font-bold text-[0.68rem]' : '',
-                id === 'h3'   ? 'font-semibold text-[0.68rem]' : '',
-                subtleBtn,
-              ].join(' ')}
+              onMouseDown={(e) => { e.preventDefault(); applyBlock(tag); }}
+              onTouchStart={(e) => { e.preventDefault(); applyBlock(tag); }}
+              className={toolbarBtnCls(isActive)}
             >
               {label}
             </button>
@@ -197,7 +238,7 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
 
       {/* ── Editor content ───────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[660px] mx-auto px-5 pt-6 pb-16">
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-16">
 
           {/* Title */}
           <input
@@ -208,13 +249,13 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
             spellCheck={false}
             autoComplete="off"
             className={[
-              'w-full bg-transparent outline-none font-bold tracking-tight mb-5 block',
-              'text-[1.32rem] leading-snug',
-              dk ? 'text-white/92 placeholder:text-white/18' : 'text-black/90 placeholder:text-black/16',
+              'w-full bg-transparent outline-none font-bold tracking-tight mb-4 block',
+              'text-[1.08rem] leading-snug',
+              dk ? 'text-white/92 placeholder:text-white/16' : 'text-black/90 placeholder:text-black/14',
             ].join(' ')}
           />
 
-          <div className={`mb-5 border-t ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`} />
+          <div className={`mb-4 border-t ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`} />
 
           {/* contentEditable body */}
           <div
@@ -225,7 +266,7 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
             data-placeholder="내용을 입력하세요..."
             className={[
               'rich-editor',
-              'leading-[1.82] text-[0.9375rem]',
+              'leading-relaxed tracking-tight text-sm',
               dk ? `${textBase} rich-editor-dk` : textBase,
             ].join(' ')}
           />
