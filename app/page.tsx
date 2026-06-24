@@ -12,10 +12,10 @@ const FONT_FAMILY: Record<FontFamily, string> = {
 };
 
 const FONT_SIZE: Record<FontSize, string> = {
-  sm:   '0.625rem',  // 10px (S)
-  base: '0.75rem',   // 12px (M) — 기본값
-  lg:   '0.75rem',   // 12px (L → M 크기로 통일)
-  xl:   '1rem',      // 16px (XL)
+  sm:   '0.75rem',   // 12px (S)
+  base: '0.875rem',  // 14px (M) — 기본값
+  lg:   '1rem',      // 16px (L)
+  xl:   '1.125rem',  // 18px (XL)
 };
 
 function AppContent() {
