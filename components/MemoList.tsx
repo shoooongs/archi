@@ -360,7 +360,7 @@ function MemoRow({
       {/* Swipeable outer layer */}
       <div
         ref={contentRef}
-        className={['px-5 will-change-transform', isEditing ? 'py-4' : 'py-5 cursor-text'].join(' ')}
+        className={['px-3 will-change-transform', isEditing ? 'py-3' : 'py-1.5 cursor-text'].join(' ')}
         style={{ touchAction: 'pan-y' }}
         onPointerDown={isEditing ? undefined : handlePointerDown}
         onPointerMove={isEditing ? undefined : handlePointerMove}
@@ -402,40 +402,44 @@ function MemoRow({
               />
             </div>
 
-          ) : memo.status === 'PUBLISH' ? (
-            // ── Published — strip HTML for plain timeline display ──────────
-            <>
-              <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
-                {memo.title}
-              </p>
-              <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
-                {isMounted ? stripHtml(memo.text) : ''}
-              </p>
-            </>
-
           ) : (
-            // ── DUMP / OFF — show title if present, strip HTML, clamp to 5 lines ──
-            <>
-              {memo.title && (
-                <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
-                  {memo.title}
-                </p>
+            // ── 말풍선 bubble ──────────────────────────────────────────────
+            <div className={[
+              'rounded-2xl rounded-tl-sm px-4 py-3',
+              dk
+                ? 'bg-white/[0.08]'
+                : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.04)]',
+            ].join(' ')}>
+              {memo.status === 'PUBLISH' ? (
+                <>
+                  <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/88'}`}>
+                    {memo.title}
+                  </p>
+                  <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                    {isMounted ? stripHtml(memo.text) : ''}
+                  </p>
+                </>
+              ) : (
+                <>
+                  {memo.title && (
+                    <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
+                      {memo.title}
+                    </p>
+                  )}
+                  <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
+                    {isMounted ? stripHtml(memo.text) : ''}
+                  </p>
+                </>
               )}
-              <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
-                {isMounted ? stripHtml(memo.text) : ''}
-              </p>
-            </>
+            </div>
           )}
 
-          {/* Empty on server; filled after client mount to avoid hydration mismatch */}
-          <p className={`mt-2 text-[0.75em] ${dk ? 'text-white/35' : 'text-black/25'}`}>
+          {/* Timestamp below bubble */}
+          <p className={`mt-1.5 text-[0.7em] ${isEditing ? 'mt-2' : 'pl-1'} ${dk ? 'text-white/28' : 'text-black/22'}`}>
             {isMounted ? formatTimestamp(memo.createdAt) : ''}
           </p>
         </div>
       </div>
-
-      {/* Padded separator line */}
-      <div className={`mx-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
     </div>
   );
 }
@@ -582,10 +586,17 @@ export default function MemoList() {
 
   // ── Add-new handlers ──────────────────────────────────────────────────
   function handleAddChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    // Lock scroll position: prevent browser/iOS from scrolling the timeline while typing
+    const sc = listRef.current;
+    const savedTop = sc?.scrollTop;
     addCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
     setAddDraft(e.target.value);
     autoResize(e.target);
     triggerTypingState();
+    if (sc && savedTop !== undefined) {
+      sc.scrollTop = savedTop;
+      requestAnimationFrame(() => { if (sc) sc.scrollTop = savedTop; });
+    }
   }
 
   function handleBodyChange(e: ChangeEvent<HTMLTextAreaElement>) {
