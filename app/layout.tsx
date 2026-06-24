@@ -45,10 +45,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
       <head>
-        {/* Set --vh synchronously before first paint so AppContent is sized
-            correctly without a visible layout shift on mobile */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var sa=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;var h=sa?window.innerHeight:(window.visualViewport?window.visualViewport.height:window.innerHeight);document.documentElement.style.setProperty('--vh',(h*0.01)+'px');})()` }} />
         {/* Explicit viewport — insurance alongside Next.js viewport export */}
         <meta
           name="viewport"

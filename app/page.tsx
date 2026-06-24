@@ -24,34 +24,6 @@ function AppContent() {
 
   const dk = settings.darkMode;
 
-  // --vh: real visible viewport height in px / 100.
-  // In PWA standalone mode, visualViewport.height subtracts a phantom browser
-  // toolbar that doesn't exist — window.innerHeight is the reliable value there.
-  // In normal browser mode, visualViewport.resize catches iOS URL-bar changes
-  // that window.resize misses.
-  useEffect(() => {
-    const setScreenSize = () => {
-      const isStandalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-      const vh = isStandalone
-        ? window.innerHeight * 0.01
-        : (window.visualViewport?.height ?? window.innerHeight) * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    setScreenSize();
-    window.addEventListener('load', setScreenSize);
-    window.addEventListener('resize', setScreenSize);
-    window.addEventListener('orientationchange', setScreenSize);
-    window.visualViewport?.addEventListener('resize', setScreenSize);
-    return () => {
-      window.removeEventListener('load', setScreenSize);
-      window.removeEventListener('resize', setScreenSize);
-      window.removeEventListener('orientationchange', setScreenSize);
-      window.visualViewport?.removeEventListener('resize', setScreenSize);
-    };
-  }, []);
-
   // Keep html/body bg in sync with the app theme so overscroll bounce
   // never reveals a mismatched white/black flash behind the app shell.
   useEffect(() => {
@@ -78,12 +50,8 @@ function AppContent() {
 
   return (
     <div
-      className="flex flex-col overflow-hidden"
-      style={{
-        height: 'calc(var(--vh, 1vh) * 100)',
-        ...bgStyle,
-        transition: 'background-color 0.2s ease',
-      }}
+      className="h-dvh flex flex-col overflow-hidden"
+      style={{ ...bgStyle, transition: 'background-color 0.2s ease' }}
     >
       {/* MemoList owns the nav bar (All / Published / ⚙️) and settings panel */}
       <div
