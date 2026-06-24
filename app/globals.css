@@ -29,7 +29,6 @@ body {
   -webkit-touch-callout: none;
   /* Prevent double-tap zoom → viewport scale jumps */
   touch-action: manipulation;
-  overscroll-behavior: none;
 }
 
 * {
