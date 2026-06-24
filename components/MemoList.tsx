@@ -508,6 +508,13 @@ export default function MemoList() {
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
+  // Scroll to bottom when switching back to timeline (after slide animation ends)
+  useEffect(() => {
+    if (subTab !== 'timeline') return;
+    const id = setTimeout(() => scrollToBottom(false), 340);
+    return () => clearTimeout(id);
+  }, [subTab, scrollToBottom]);
+
   // Scroll to bottom on view switch + reset subTab
   useEffect(() => {
     setSubTab('timeline');

@@ -13,11 +13,17 @@
   --font-serif: Georgia, ui-serif, serif;
 }
 
+/* Prevent iOS Safari from auto-inflating text when layout is narrower than viewport */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   color: var(--foreground);
-  /* Suppress iOS native callout (link/text preview bubble) on long press.
-     Safe to apply globally — our app uses a custom long-press gesture instead. */
   -webkit-touch-callout: none;
+  /* Prevent double-tap zoom → viewport scale jumps */
+  touch-action: manipulation;
 }
 
 * {

@@ -13,8 +13,8 @@ const FONT_FAMILY: Record<FontFamily, string> = {
 
 const FONT_SIZE: Record<FontSize, string> = {
   sm:   '0.625rem',  // 10px (S)
-  base: '0.75rem',   // 12px (M)
-  lg:   '0.875rem',  // 14px (L)
+  base: '0.75rem',   // 12px (M) — 기본값
+  lg:   '0.75rem',   // 12px (L → M 크기로 통일)
   xl:   '1rem',      // 16px (XL)
 };
 
@@ -42,7 +42,7 @@ function AppContent() {
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
+      className="h-dvh flex flex-col overflow-hidden"
       style={{ ...bgStyle, transition: 'background-color 0.2s ease' }}
     >
       {/* MemoList owns the nav bar (All / Published / ⚙️) and settings panel */}
