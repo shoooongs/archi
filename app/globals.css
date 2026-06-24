@@ -17,13 +17,19 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Match app default light bg — prevents white flash on overscroll / rubber-band bounce */
+  background-color: #f5f5f4;
+  /* Lock scroll to the app shell; no page-level bounce */
+  overscroll-behavior: none;
 }
 
 body {
   color: var(--foreground);
+  background-color: #f5f5f4;
   -webkit-touch-callout: none;
   /* Prevent double-tap zoom → viewport scale jumps */
   touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 * {

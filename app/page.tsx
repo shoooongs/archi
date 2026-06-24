@@ -1,6 +1,6 @@
 'use client';
 
-import { type CSSProperties } from 'react';
+import { type CSSProperties, useEffect } from 'react';
 import { StoreProvider, useStore } from '@/lib/store';
 import MemoList from '@/components/MemoList';
 import type { FontFamily, FontSize } from '@/lib/types';
@@ -24,6 +24,33 @@ function AppContent() {
 
   const dk = settings.darkMode;
 
+  // --vh: real visible viewport height per px (window.innerHeight / 100).
+  // dvh/svh alone can't fully compensate for the mobile browser chrome
+  // transition lag; binding to window.innerHeight gives the ground truth.
+  useEffect(() => {
+    const update = () => {
+      document.documentElement.style.setProperty(
+        '--vh',
+        `${window.innerHeight * 0.01}px`,
+      );
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  // Keep html/body bg in sync with the app theme so overscroll bounce
+  // never reveals a mismatched white/black flash behind the app shell.
+  useEffect(() => {
+    const bg = dk ? '#0a0a0a' : settings.bgColor;
+    document.documentElement.style.backgroundColor = bg;
+    document.body.style.backgroundColor = bg;
+  }, [dk, settings.bgColor]);
+
   const bgStyle: CSSProperties = dk
     ? { backgroundColor: '#0a0a0a' }
     : settings.bgMode === 'image' && settings.bgImage
@@ -42,8 +69,12 @@ function AppContent() {
 
   return (
     <div
-      className="h-dvh flex flex-col overflow-hidden"
-      style={{ ...bgStyle, transition: 'background-color 0.2s ease' }}
+      className="flex flex-col overflow-hidden"
+      style={{
+        height: 'calc(var(--vh, 1vh) * 100)',
+        ...bgStyle,
+        transition: 'background-color 0.2s ease',
+      }}
     >
       {/* MemoList owns the nav bar (All / Published / ⚙️) and settings panel */}
       <div

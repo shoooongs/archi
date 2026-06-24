@@ -42,9 +42,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
       <head>
+        {/* Set --vh synchronously before first paint so AppContent is sized
+            correctly without a visible layout shift on mobile */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px');})()` }} />
         {/* Explicit viewport — insurance alongside Next.js viewport export */}
         <meta
           name="viewport"
@@ -58,7 +62,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="h-dvh flex flex-col overflow-hidden">{children}</body>
+      <body className="flex flex-col overflow-hidden">{children}</body>
     </html>
   );
 }
