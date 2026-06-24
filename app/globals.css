@@ -36,33 +36,6 @@ body {
   box-sizing: border-box;
 }
 
-/* ── Input card anchor ───────────────────────────────────────────────────── */
-/* absolute in browser, fixed in standalone PWA (z-30 stays below sidebar z-40) */
-.pwa-input-anchor {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
-
-/* ── PWA Standalone mode ─────────────────────────────────────────────────── */
-/* In standalone, there is no browser chrome. visualViewport.height
-   wrongly subtracts a phantom toolbar on some iOS versions, so JS overrides
-   --vh with window.innerHeight. The CSS below adds a belt-and-suspenders
-   layer: locks html/body overflow and fixes the input card to the true
-   hardware bottom so no phantom gap can appear. */
-@media (display-mode: standalone) {
-  html, body {
-    overflow: hidden;
-    height: 100%;
-  }
-
-  .pwa-input-anchor {
-    position: fixed;
-    z-index: 30;
-  }
-}
-
 /* ── Rich text editor (contentEditable) ─────────────────────────────────── */
 
 .rich-editor {

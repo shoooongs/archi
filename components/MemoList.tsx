@@ -790,7 +790,7 @@ export default function MemoList() {
               />
             ))}
 
-            <div className={showInputCard ? 'h-[100px]' : 'h-2'} />
+            <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
           </div>
         </div>
 
@@ -844,9 +844,14 @@ export default function MemoList() {
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
       {showInputCard && (
-        <div className="pwa-input-anchor">
-          {/* Input card — sits above the safe-area fill */}
-          <div className="max-w-2xl mx-auto px-4 pt-2">
+        <div
+          className="absolute bottom-0 left-0 right-0"
+          style={{
+            paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)',
+            paddingTop: '0.5rem',
+          }}
+        >
+          <div className="max-w-2xl mx-auto px-4">
             <div
               ref={inputCardRef}
               className={[
@@ -887,11 +892,6 @@ export default function MemoList() {
               </button>
             </div>
           </div>
-          {/* Safe-area fill: extends card glass to home indicator / screen edge */}
-          <div
-            className={dk ? 'bg-neutral-900/85 backdrop-blur-2xl' : 'bg-white/90 backdrop-blur-2xl'}
-            style={{ height: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
-          />
         </div>
       )}
 
