@@ -310,7 +310,7 @@ function MemoRow({
   ].join(' ');
 
   return (
-    <div className={`relative overflow-hidden border-b ${dk ? 'border-white/10' : 'border-black/8'}`}>
+    <div className="relative overflow-hidden">
 
       {/* Left action panel — 복구/되살리기 (right swipe) */}
       <div
@@ -410,6 +410,9 @@ function MemoRow({
           </p>
         </div>
       </div>
+
+      {/* Padded separator line */}
+      <div className={`mx-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
     </div>
   );
 }
@@ -651,149 +654,158 @@ export default function MemoList() {
         onSelectView={setActiveView}
       />
 
-      {/* ── Scrollable timeline ─────────────────────────────────────── */}
-      <div ref={listRef} className="flex-1 overflow-y-auto">
+      {/* ── Glass header: hamburger(left) + Published(right) ───────── */}
+      <div
+        className={`flex-shrink-0 z-10 backdrop-blur-md transition-colors duration-200 ${dk ? 'bg-neutral-950/80' : 'bg-white/75'}`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="px-4 py-2.5 flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={`p-1.5 -ml-1 rounded-xl transition-colors ${dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/30 hover:text-black/58 hover:bg-black/5'}`}
+            aria-label="메뉴 열기"
+          >
+            <HamburgerIcon />
+          </button>
 
-        {/* Sticky header — hamburger + sub-tab bar */}
-        <div
-          className={`sticky top-0 z-10 backdrop-blur-md transition-colors duration-200 ${dk ? 'bg-neutral-950/80' : 'bg-white/75'}`}
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        >
-          <div className="px-4 pt-2.5 pb-1">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className={`p-1.5 -ml-1 rounded-xl transition-colors ${dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/30 hover:text-black/58 hover:bg-black/5'}`}
-              aria-label="메뉴 열기"
-            >
-              <HamburgerIcon />
-            </button>
-          </div>
-          {/* Tab bar — hidden in trash view */}
           {!isTrashView && (
-            <div className="flex justify-center gap-10 pb-2.5">
-              {(['timeline', 'published'] as const).map((tab) => {
-                const active = subTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setSubTab(tab)}
-                    className={[
-                      'text-xs tracking-wide transition-all duration-200 pb-px border-b',
-                      active
-                        ? `font-semibold ${dk ? 'text-white/80 border-white/50' : 'text-black/75 border-black/50'}`
-                        : `border-transparent ${dk ? 'text-white/30 hover:text-white/58' : 'text-black/28 hover:text-black/52'}`,
-                    ].join(' ')}
-                  >
-                    {tab === 'timeline' ? 'Timeline' : 'Published'}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => setSubTab(subTab === 'published' ? 'timeline' : 'published')}
+              className={[
+                'px-3 py-1 rounded-full text-xs font-medium transition-all duration-200',
+                'shadow-sm border backdrop-blur-sm',
+                subTab === 'published'
+                  ? dk
+                    ? 'bg-white/85 text-neutral-900 border-white/80'
+                    : 'bg-black/75 text-white border-black/70'
+                  : dk
+                    ? 'bg-white/8 text-white/52 border-white/14 hover:bg-white/14 hover:text-white/78'
+                    : 'bg-black/[0.04] text-black/40 border-black/10 hover:bg-black/8 hover:text-black/62',
+              ].join(' ')}
+            >
+              Published
+            </button>
           )}
         </div>
+      </div>
 
-        <div className="max-w-2xl mx-auto">
+      {/* ── Sliding content panels ──────────────────────────────────── */}
+      <div className="flex-1 relative overflow-hidden">
 
-          {subTab === 'published' ? (
-            // ── Published list ────────────────────────────────────────────
-            <>
-              {isHydrated && publishedMemos.length === 0 && (
-                <div className="px-5 py-14 text-center">
-                  <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                    아직 Published 글이 없어요.
-                  </p>
-                  <p className={`mt-1.5 text-xs ${dk ? 'text-white/18' : 'text-black/18'}`}>
-                    제목이 있는 메모를 발행하면 여기에 표시됩니다.
-                  </p>
-                </div>
-              )}
-              {isHydrated && publishedMemos.map((memo) => {
-                const preview = stripHtml(memo.text);
-                return (
-                  <div
-                    key={memo.id}
-                    onClick={() => setZenMemo(memo)}
-                    className={`px-5 py-4 border-b cursor-pointer transition-colors ${dk ? 'border-white/[0.07] active:bg-white/[0.04]' : 'border-black/[0.06] active:bg-black/[0.025]'}`}
-                  >
-                    <h3 className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/88' : 'text-black/88'}`}>
-                      {memo.title}
-                    </h3>
-                    {preview && (
-                      <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-5 ${dk ? 'text-white/45' : 'text-black/42'}`}>
-                        {preview}
-                      </p>
-                    )}
-                    <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
-                      {formatTimestamp(memo.createdAt)}
-                    </p>
-                  </div>
-                );
-              })}
-              <div className="h-8" />
-            </>
-          ) : (
-            // ── Timeline ─────────────────────────────────────────────────
-            <>
-              {isHydrated && displayedMemos.length === 0 && (
-                <div className="px-5 py-12 text-center">
-                  <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                    {isTrashView
-                      ? '휴지통이 비어있어요.'
-                      : activeView !== 'all'
-                        ? '이 폴더에 아직 메모가 없어요.'
-                        : '첫 생각을 아래에 적어보세요.'}
-                  </p>
-                </div>
-              )}
+        {/* Timeline panel — slides out left when switching to Published */}
+        <div
+          ref={listRef}
+          className="absolute inset-0 overflow-y-auto will-change-transform"
+          style={{
+            transform: subTab === 'timeline' ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          <div className="max-w-2xl mx-auto">
+            {isHydrated && displayedMemos.length === 0 && (
+              <div className="px-5 py-12 text-center">
+                <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                  {isTrashView
+                    ? '휴지통이 비어있어요.'
+                    : activeView !== 'all'
+                      ? '이 폴더에 아직 메모가 없어요.'
+                      : '첫 생각을 아래에 적어보세요.'}
+                </p>
+              </div>
+            )}
 
-              {isHydrated && displayedMemos.map((memo) => (
-                <MemoRow
+            {isHydrated && displayedMemos.map((memo) => (
+              <MemoRow
+                key={memo.id}
+                memo={memo}
+                fontFamily={settings.fontFamily}
+                darkMode={dk}
+                isEditing={editingId === memo.id}
+                isTrashView={isTrashView}
+                editTitle={editTitle}
+                editBody={editBody}
+                setEditTitle={setEditTitle}
+                onBodyChange={handleBodyChange}
+                titleRef={titleRef as RefObject<HTMLInputElement>}
+                bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
+                onEditorBlur={handleEditorBlur}
+                onTitleKeyDown={handleTitleKeyDown}
+                onBodyKeyDown={handleBodyKeyDown}
+                onBodyFocus={handleBodyFocus}
+                onStartEdit={() => {
+                  if (isTrashView) return;
+                  if (memo.status === 'PUBLISH') { setZenMemo(memo); return; }
+                  startEdit(memo.id, memo.title, memo.text);
+                }}
+                onSwipeLeft={() => {
+                  if (isTrashView) {
+                    deleteMemo(memo.id);
+                  } else if (memo.status === 'OFF') {
+                    updateMemo(memo.id, { isDeleted: true });
+                  } else {
+                    updateMemo(memo.id, { status: 'OFF' });
+                  }
+                }}
+                onSwipeRight={() => {
+                  if (isTrashView) {
+                    updateMemo(memo.id, { isDeleted: false });
+                  } else if (memo.status === 'OFF') {
+                    updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
+                  }
+                }}
+              />
+            ))}
+
+            <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
+          </div>
+        </div>
+
+        {/* Published panel — slides in from right */}
+        <div
+          className="absolute inset-0 overflow-y-auto will-change-transform"
+          style={{
+            transform: subTab === 'published' ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          <div className="max-w-2xl mx-auto">
+            {isHydrated && publishedMemos.length === 0 && (
+              <div className="px-5 py-14 text-center">
+                <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                  아직 Published 글이 없어요.
+                </p>
+                <p className={`mt-1.5 text-xs ${dk ? 'text-white/18' : 'text-black/18'}`}>
+                  제목이 있는 메모를 발행하면 여기에 표시됩니다.
+                </p>
+              </div>
+            )}
+            {isHydrated && publishedMemos.map((memo) => {
+              const preview = stripHtml(memo.text);
+              return (
+                <div
                   key={memo.id}
-                  memo={memo}
-                  fontFamily={settings.fontFamily}
-                  darkMode={dk}
-                  isEditing={editingId === memo.id}
-                  isTrashView={isTrashView}
-                  editTitle={editTitle}
-                  editBody={editBody}
-                  setEditTitle={setEditTitle}
-                  onBodyChange={handleBodyChange}
-                  titleRef={titleRef as RefObject<HTMLInputElement>}
-                  bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
-                  onEditorBlur={handleEditorBlur}
-                  onTitleKeyDown={handleTitleKeyDown}
-                  onBodyKeyDown={handleBodyKeyDown}
-                  onBodyFocus={handleBodyFocus}
-                  onStartEdit={() => {
-                    if (isTrashView) return;
-                    if (memo.status === 'PUBLISH') { setZenMemo(memo); return; }
-                    startEdit(memo.id, memo.title, memo.text);
-                  }}
-                  onSwipeLeft={() => {
-                    if (isTrashView) {
-                      deleteMemo(memo.id);
-                    } else if (memo.status === 'OFF') {
-                      updateMemo(memo.id, { isDeleted: true });
-                    } else {
-                      updateMemo(memo.id, { status: 'OFF' });
-                    }
-                  }}
-                  onSwipeRight={() => {
-                    if (isTrashView) {
-                      updateMemo(memo.id, { isDeleted: false });
-                    } else if (memo.status === 'OFF') {
-                      updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
-                    }
-                  }}
-                />
-              ))}
-
-              {/* Sentinel — extra space so last memo clears the input bar */}
-              <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
-            </>
-          )}
-
+                  onClick={() => setZenMemo(memo)}
+                  className={`relative px-5 py-4 cursor-pointer transition-colors ${dk ? 'active:bg-white/[0.04]' : 'active:bg-black/[0.025]'}`}
+                >
+                  <h3 className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/88' : 'text-black/88'}`}>
+                    {memo.title}
+                  </h3>
+                  {preview && (
+                    <p className={`mt-1.5 text-[0.85em] leading-relaxed line-clamp-5 ${dk ? 'text-white/45' : 'text-black/42'}`}>
+                      {preview}
+                    </p>
+                  )}
+                  <p className={`mt-2 text-[0.72em] ${dk ? 'text-white/28' : 'text-black/22'}`}>
+                    {formatTimestamp(memo.createdAt)}
+                  </p>
+                  <div className={`absolute bottom-0 left-5 right-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
+                </div>
+              );
+            })}
+            <div className="h-8" />
+          </div>
         </div>
+
       </div>
 
       {/* ── Floating glassmorphism input card ───────────────────────── */}
