@@ -4,51 +4,48 @@ import {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
+  type ChangeEvent,
   type KeyboardEvent,
   type FocusEvent,
   type RefObject,
 } from 'react';
 import { useStore } from '@/lib/store';
 import type { FontFamily, MemoItem } from '@/lib/types';
-import SettingsPanel from '@/components/SettingsPanel';
+import Sidebar from '@/components/Sidebar';
+import ZenEditor from '@/components/ZenEditor';
+import { stripHtml } from '@/lib/markdown';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
-function GearIcon({ open }: { open: boolean }) {
+function HamburgerIcon() {
   return (
-    <svg
-      width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="1.6"
-      strokeLinecap="round" strokeLinejoin="round"
-      style={{ transition: 'transform 0.3s', transform: open ? 'rotate(45deg)' : 'rotate(0deg)' }}
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   );
 }
 
-function MoonIcon() {
+// Document icon — shown in Timeline view (tap to go to Published)
+function DocIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="13 2 13 9 20 9" />
+      <line x1="9" y1="14" x2="15" y2="14" />
+      <line x1="9" y1="18" x2="15" y2="18" />
     </svg>
   );
 }
 
-function SunIcon() {
+// Speech bubble icon — shown in Published view (tap to go back to Timeline)
+function TimelineIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -61,8 +58,6 @@ function SendIcon() {
     </svg>
   );
 }
-
-type ViewMode = 'ALL' | 'PUBLISHED_ONLY';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -155,10 +150,10 @@ async function exportMemoAsCard(memo: MemoItem, fontFamilyKey: FontFamily) {
   }
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.font = `11px ${font}`;
-  const brand = 'MIND DUMP';
+  const brand = 'ARCHI';
   ctx.fillText(brand, W - 72 - ctx.measureText(brand).width, H - 68);
   const a = document.createElement('a');
-  a.download = `mind-dump-${Date.now()}.png`;
+  a.download = `archi-${Date.now()}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 }
@@ -170,10 +165,11 @@ interface MemoRowProps {
   fontFamily: FontFamily;
   darkMode: boolean;
   isEditing: boolean;
+  isTrashView: boolean;
   editTitle: string;
   editBody: string;
   setEditTitle: (v: string) => void;
-  setEditBody: (v: string) => void;
+  onBodyChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   titleRef: RefObject<HTMLInputElement>;
   bodyRef: RefObject<HTMLTextAreaElement>;
   onEditorBlur: (e: FocusEvent<HTMLDivElement>) => void;
@@ -185,11 +181,13 @@ interface MemoRowProps {
   onSwipeRight: () => void;
 }
 
+// ─── MemoRow ─────────────────────────────────────────────────────────────────
+
 const LONG_PRESS_MS = 600;
 
 function MemoRow({
-  memo, fontFamily, darkMode, isEditing,
-  editTitle, editBody, setEditTitle, setEditBody,
+  memo, fontFamily, darkMode, isEditing, isTrashView,
+  editTitle, editBody, setEditTitle, onBodyChange,
   titleRef, bodyRef,
   onEditorBlur, onTitleKeyDown, onBodyKeyDown, onBodyFocus,
   onStartEdit, onSwipeLeft, onSwipeRight,
@@ -209,6 +207,14 @@ function MemoRow({
   useEffect(() => { setIsMounted(true); }, []);
 
   const isOff = memo.status === 'OFF';
+
+  // Left-swipe (right panel): grey→"끄기", red→"휴지통", darkred→"완전 삭제"
+  const rightActionBg    = isTrashView ? 'bg-red-600' : isOff ? 'bg-red-400' : 'bg-neutral-400';
+  const rightActionLabel = isTrashView ? '완전 삭제' : isOff ? '휴지통' : '끄기';
+  // Right-swipe (left panel): restore / recover from trash
+  const leftActionLabel  = isTrashView ? '복구하기' : '되살리기';
+  // Right swipe is available for OFF memos and all trash memos
+  const canSwipeRight    = isOff || isTrashView;
 
   function applyOffset(offset: number) {
     if (contentRef.current) contentRef.current.style.transform = `translateX(${offset}px)`;
@@ -291,8 +297,7 @@ function MemoRow({
       swipingRef.current = true;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     }
-    // Right swipe only allowed for OFF memos
-    const maxRight = isOff ? 120 : 0;
+    const maxRight = canSwipeRight ? 120 : 0;
     applyOffset(Math.max(-120, Math.min(maxRight, dx)));
   }
 
@@ -325,15 +330,10 @@ function MemoRow({
       : `scale-100 ${isOff ? 'opacity-30' : 'opacity-100'}`,
   ].join(' ');
 
-  // Right action panel label (left swipe)
-  const rightActionLabel = isOff ? '삭제하기' : '끄기';
-  // Left action panel label (right swipe — only for OFF memos)
-  const leftActionLabel  = '되살리기';
-
   return (
-    <div className={`relative overflow-hidden border-b ${dk ? 'border-white/10' : 'border-black/8'}`}>
+    <div className="relative overflow-hidden">
 
-      {/* Left action panel — 되살리기 (right swipe, OFF only) */}
+      {/* Left action panel — 복구/되살리기 (right swipe) */}
       <div
         ref={leftActionRef}
         className="absolute left-0 top-0 bottom-0 flex items-center justify-start pl-5 overflow-hidden bg-emerald-500"
@@ -344,10 +344,10 @@ function MemoRow({
         </span>
       </div>
 
-      {/* Right action panel — 끄기 or 삭제하기 (left swipe) */}
+      {/* Right action panel — 끄기 / 휴지통 / 완전 삭제 (left swipe) */}
       <div
         ref={rightActionRef}
-        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${isOff ? 'bg-red-500' : 'bg-neutral-400'}`}
+        className={`absolute right-0 top-0 bottom-0 flex items-center justify-end pr-5 overflow-hidden ${rightActionBg}`}
         style={{ width: 0, opacity: 0 }}
       >
         <span className="text-[0.75em] tracking-wide select-none whitespace-nowrap text-white">
@@ -358,7 +358,7 @@ function MemoRow({
       {/* Swipeable outer layer */}
       <div
         ref={contentRef}
-        className={['px-5', isEditing ? 'py-4' : 'py-5 cursor-text'].join(' ')}
+        className={['px-5 will-change-transform', isEditing ? 'py-4' : 'py-4 cursor-text'].join(' ')}
         style={{ touchAction: 'pan-y' }}
         onPointerDown={isEditing ? undefined : handlePointerDown}
         onPointerMove={isEditing ? undefined : handlePointerMove}
@@ -389,7 +389,7 @@ function MemoRow({
                 ref={bodyRef}
                 rows={1}
                 value={editBody}
-                onChange={(e) => { setEditBody(e.target.value); autoResize(e.target); }}
+                onChange={onBodyChange}
                 onKeyDown={onBodyKeyDown}
                 onFocus={onBodyFocus}
                 onClick={(e) => e.stopPropagation()}
@@ -402,29 +402,37 @@ function MemoRow({
 
           ) : memo.status === 'PUBLISH' ? (
             // ── Published ──
-            // Title bold, body same font-size as DUMP memos — no size reduction.
             <>
-              <p className={`font-semibold leading-snug tracking-tight ${dk ? 'text-white/90' : 'text-black/90'}`}>
+              <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
                 {memo.title}
               </p>
-              <p className={`mt-1.5 leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/60' : 'text-black/55'}`}>
-                {memo.text}
+              <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
               </p>
             </>
 
           ) : (
             // ── DUMP / OFF ──
-            <p className={`leading-relaxed whitespace-pre-wrap break-words ${dk ? 'text-white/80' : 'text-black/75'}`}>
-              {memo.text}
-            </p>
+            <>
+              {memo.title && (
+                <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
+                  {memo.title}
+                </p>
+              )}
+              <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
+              </p>
+            </>
           )}
 
-          {/* Empty on server; filled after client mount to avoid hydration mismatch */}
           <p className={`mt-2 text-[0.75em] ${dk ? 'text-white/35' : 'text-black/25'}`}>
             {isMounted ? formatTimestamp(memo.createdAt) : ''}
           </p>
         </div>
       </div>
+
+      {/* Padded separator line */}
+      <div className={`mx-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
     </div>
   );
 }
@@ -436,9 +444,16 @@ export default function MemoList() {
   const { memos, settings, isHydrated } = state;
   const dk = settings.darkMode;
 
-  // ── View mode & settings panel ────────────────────────────────────────
-  const [viewMode, setViewMode]         = useState<ViewMode>('ALL');
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // ── Active view & sidebar ─────────────────────────────────────────────
+  // 'all' = All Memos, 'trash' = Trash, any other string = folder id
+  const [activeView,  setActiveView]  = useState('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── Sub-tab: Timeline | Published ─────────────────────────────────────
+  const [subTab, setSubTab] = useState<'timeline' | 'published'>('timeline');
+
+  // ── Zen editor ───────────────────────────────────────────────────────
+  const [zenMemo, setZenMemo] = useState<MemoItem | null>(null);
 
   // ── Add-new draft (always-visible input bar) ──────────────────────────
   const [addDraft, setAddDraft] = useState('');
@@ -453,7 +468,10 @@ export default function MemoList() {
   const [editBody, setEditBody]   = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef  = useRef<HTMLTextAreaElement>(null);
-  const editCancelledRef = useRef(false);
+  const editCancelledRef  = useRef(false);
+  const editStartRef      = useRef(false);
+  const addCursorRef      = useRef({ start: 0, end: 0 });
+  const editBodyCursorRef = useRef({ start: 0, end: 0 });
 
   // ── Scroll ────────────────────────────────────────────────────────────
   const listRef        = useRef<HTMLDivElement>(null);
@@ -484,31 +502,64 @@ export default function MemoList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated]);
 
-  // Scroll to bottom when a new memo is added
+  // Scroll to bottom when a new memo is added.
+  // double-rAF ensures the new row is fully laid out before reading scrollHeight,
+  // so the scroll reaches the bottom of the new memo without clipping.
   useEffect(() => {
-    if (memos.length > prevLengthRef.current) scrollToBottom(true);
+    if (memos.length > prevLengthRef.current) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollToBottom(true));
+      });
+    }
     prevLengthRef.current = memos.length;
   }, [memos.length, scrollToBottom]);
 
-  // Scroll to bottom on tab switch
+  // Scroll to bottom when switching back to timeline (after slide animation ends)
   useEffect(() => {
+    if (subTab !== 'timeline') return;
+    const id = setTimeout(() => scrollToBottom(false), 340);
+    return () => clearTimeout(id);
+  }, [subTab, scrollToBottom]);
+
+  // Scroll to bottom on view switch + reset subTab
+  useEffect(() => {
+    setSubTab('timeline');
     return scrollToBottomDeferred();
-  }, [viewMode, scrollToBottomDeferred]);
+  }, [activeView, scrollToBottomDeferred]);
 
   useEffect(() => {
     if (!editingId || !bodyRef.current) return;
     const el = bodyRef.current;
     autoResize(el);
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
+    el.focus(); // onFocus → handleBodyFocus → sets cursor to end on initial open
   }, [editingId]);
 
+  // Restore add-new cursor after re-renders (prevents cursor jump on mobile)
+  useLayoutEffect(() => {
+    const el = addRef.current;
+    if (!el || document.activeElement !== el) return;
+    el.setSelectionRange(addCursorRef.current.start, addCursorRef.current.end);
+  }, [addDraft]);
+
+  // Restore edit-body cursor after re-renders; skip on initial edit-open
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el || !editingId || document.activeElement !== el) return;
+    if (editStartRef.current) return;
+    el.setSelectionRange(editBodyCursorRef.current.start, editBodyCursorRef.current.end);
+  }, [editBody, editingId]);
+
   // ── Filtered memos ────────────────────────────────────────────────────
+  const isTrashView = activeView === 'trash';
   const displayedMemos = memos.filter((m) => {
+    if (isTrashView) return m.isDeleted;
+    if (m.isDeleted) return false;
     if (settings.hideOff && m.status === 'OFF') return false;
-    if (viewMode === 'PUBLISHED_ONLY') return m.status === 'PUBLISH';
-    return true;
+    if (activeView === 'all') return true;
+    return m.folderId === activeView;
   });
+  const publishedMemos = displayedMemos.filter((m) => m.status === 'PUBLISH' && m.title);
+  const showInputCard  = !isTrashView && subTab === 'timeline';
 
   // ── Card press / release ─────────────────────────────────────────────
   function pressCard(depth: 'light' | 'strong' = 'light') {
@@ -540,10 +591,23 @@ export default function MemoList() {
   }
 
   // ── Add-new handlers ──────────────────────────────────────────────────
-  function handleAddChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleAddChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    // Lock scroll position: prevent browser/iOS from scrolling the timeline while typing
+    const sc = listRef.current;
+    const savedTop = sc?.scrollTop;
+    addCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
     setAddDraft(e.target.value);
     autoResize(e.target);
-    triggerTypingState();
+    if (sc && savedTop !== undefined) {
+      sc.scrollTop = savedTop;
+      requestAnimationFrame(() => { if (sc) sc.scrollTop = savedTop; });
+    }
+  }
+
+  function handleBodyChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    editBodyCursorRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+    setEditBody(e.target.value);
+    autoResize(e.target);
   }
 
   // Enter always inserts a newline — submit only via the send button.
@@ -565,7 +629,8 @@ export default function MemoList() {
     isTypingRef.current = false;
     pressCard('strong');
     setTimeout(releaseCard, 120);
-    addMemo(trimmed);
+    const folderId = activeView !== 'all' && activeView !== 'trash' ? activeView : null;
+    addMemo(trimmed, folderId);
     setAddDraft('');
     requestAnimationFrame(() => {
       if (addRef.current) {
@@ -578,6 +643,7 @@ export default function MemoList() {
   // ── Edit handlers ─────────────────────────────────────────────────────
   function startEdit(id: string, title: string | null, body: string) {
     if (editingId === id) return;
+    editStartRef.current = true;
     setEditingId(id); setEditTitle(title ?? ''); setEditBody(body);
   }
   function commitEdit() {
@@ -607,6 +673,8 @@ export default function MemoList() {
     if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
   }
   function handleBodyFocus(e: FocusEvent<HTMLTextAreaElement>) {
+    if (!editStartRef.current) return; // already editing — keep browser-placed cursor
+    editStartRef.current = false;
     const el = e.target;
     el.setSelectionRange(el.value.length, el.value.length);
   }
@@ -617,106 +685,165 @@ export default function MemoList() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden relative">
 
-      {/* ── Scrollable timeline ─────────────────────────────────────── */}
-      <div ref={listRef} className="flex-1 overflow-y-auto">
+      {/* ── Sidebar drawer ──────────────────────────────────────────── */}
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeView={activeView}
+        onSelectView={setActiveView}
+      />
 
-        {/* Nav bar */}
-        <div
-          className={`sticky top-0 z-10 backdrop-blur-md border-b transition-colors duration-200 ${dk ? 'bg-neutral-900/80 border-white/10' : 'bg-white/70 border-black/8'}`}
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        >
-          <div className="max-w-2xl mx-auto px-5 flex items-center py-2.5">
-            <div className="flex items-center gap-6">
-              {(['ALL', 'PUBLISHED_ONLY'] as ViewMode[]).map((mode) => {
-                const label  = mode === 'ALL' ? 'All' : 'Published';
-                const active = viewMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    className={[
-                      'text-xs tracking-wide transition-all duration-200 pb-px',
-                      active
-                        ? `font-semibold border-b ${dk ? 'text-white/80 border-white/55' : 'text-black/75 border-black/50'}`
-                        : `font-normal border-b border-transparent ${dk ? 'text-white/35 hover:text-white/60' : 'text-black/30 hover:text-black/50'}`,
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+      {/* ── Transparent iOS-style header ────────────────────────────── */}
+      <div
+        className="flex-shrink-0 z-10"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="px-3 py-2 flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={`p-2 rounded-xl transition-colors ${dk ? 'text-white/42 hover:text-white/72 hover:bg-white/8' : 'text-black/32 hover:text-black/62 hover:bg-black/6'}`}
+            aria-label="메뉴 열기"
+          >
+            <HamburgerIcon />
+          </button>
 
-            <div className="ml-auto flex items-center gap-0.5">
-              <button
-                onClick={() => updateSettings({ darkMode: !dk })}
-                aria-label={dk ? '라이트 모드로 전환' : '다크 모드로 전환'}
-                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/45 hover:text-white/80 hover:bg-white/10' : 'text-black/30 hover:text-black/60 hover:bg-black/5'}`}
-              >
-                {dk ? <SunIcon /> : <MoonIcon />}
-              </button>
-              <button
-                onClick={() => setSettingsOpen((v) => !v)}
-                aria-label={settingsOpen ? '설정 닫기' : '설정 열기'}
-                className={`p-1.5 rounded-full transition-colors ${dk ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-black/35 hover:text-black/65 hover:bg-black/5'}`}
-              >
-                <GearIcon open={settingsOpen} />
-              </button>
-            </div>
-          </div>
-          {settingsOpen && <SettingsPanel />}
-        </div>
-
-        <div className="max-w-2xl mx-auto">
-
-          {isHydrated && displayedMemos.length === 0 && (
-            <div className="px-5 py-12 text-center">
-              <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
-                {viewMode === 'PUBLISHED_ONLY' ? '아직 작성된 글이 없어요.' : '첫 생각을 아래에 적어보세요.'}
-              </p>
-            </div>
+          {!isTrashView && (
+            <button
+              onClick={() => setSubTab(subTab === 'published' ? 'timeline' : 'published')}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                subTab === 'published'
+                  ? dk ? 'text-white/85 bg-white/10' : 'text-black/78 bg-black/7'
+                  : dk ? 'text-white/38 hover:text-white/68 hover:bg-white/8' : 'text-black/28 hover:text-black/58 hover:bg-black/6'
+              }`}
+              aria-label={subTab === 'published' ? '타임라인으로' : 'Published로'}
+            >
+              {subTab === 'published' ? <TimelineIcon /> : <DocIcon />}
+            </button>
           )}
-
-          {isHydrated && displayedMemos.map((memo) => (
-            <MemoRow
-              key={memo.id}
-              memo={memo}
-              fontFamily={settings.fontFamily}
-              darkMode={dk}
-              isEditing={editingId === memo.id}
-              editTitle={editTitle}
-              editBody={editBody}
-              setEditTitle={setEditTitle}
-              setEditBody={setEditBody}
-              titleRef={titleRef as RefObject<HTMLInputElement>}
-              bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
-              onEditorBlur={handleEditorBlur}
-              onTitleKeyDown={handleTitleKeyDown}
-              onBodyKeyDown={handleBodyKeyDown}
-              onBodyFocus={handleBodyFocus}
-              onStartEdit={() => startEdit(memo.id, memo.title, memo.text)}
-              onSwipeLeft={() => {
-                if (memo.status === 'OFF') {
-                  deleteMemo(memo.id);
-                } else {
-                  updateMemo(memo.id, { status: 'OFF' });
-                }
-              }}
-              onSwipeRight={() => {
-                if (memo.status === 'OFF') {
-                  updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
-                }
-              }}
-            />
-          ))}
-
-          {/* Sentinel for scroll-to-bottom — extra space so last memo clears the input bar */}
-          <div className={viewMode === 'ALL' ? 'h-[80px]' : 'h-2'} />
         </div>
       </div>
 
+      {/* ── Sliding content panels ──────────────────────────────────── */}
+      <div className="flex-1 relative overflow-hidden">
+
+        {/* Timeline panel — slides out left when switching to Published */}
+        <div
+          ref={listRef}
+          className="absolute inset-0 overflow-y-auto will-change-transform"
+          style={{
+            transform: subTab === 'timeline' ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          <div className="max-w-2xl mx-auto">
+            {isHydrated && displayedMemos.length === 0 && (
+              <div className="px-5 py-12 text-center">
+                <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                  {isTrashView
+                    ? '휴지통이 비어있어요.'
+                    : activeView !== 'all'
+                      ? '이 폴더에 아직 메모가 없어요.'
+                      : '첫 생각을 아래에 적어보세요.'}
+                </p>
+              </div>
+            )}
+
+            {isHydrated && displayedMemos.map((memo) => (
+              <MemoRow
+                key={memo.id}
+                memo={memo}
+                fontFamily={settings.fontFamily}
+                darkMode={dk}
+                isEditing={editingId === memo.id}
+                isTrashView={isTrashView}
+                editTitle={editTitle}
+                editBody={editBody}
+                setEditTitle={setEditTitle}
+                onBodyChange={handleBodyChange}
+                titleRef={titleRef as RefObject<HTMLInputElement>}
+                bodyRef={bodyRef as RefObject<HTMLTextAreaElement>}
+                onEditorBlur={handleEditorBlur}
+                onTitleKeyDown={handleTitleKeyDown}
+                onBodyKeyDown={handleBodyKeyDown}
+                onBodyFocus={handleBodyFocus}
+                onStartEdit={() => {
+                  if (isTrashView) return;
+                  if (memo.status === 'PUBLISH') { setZenMemo(memo); return; }
+                  startEdit(memo.id, memo.title, memo.text);
+                }}
+                onSwipeLeft={() => {
+                  if (isTrashView) {
+                    deleteMemo(memo.id);
+                  } else if (memo.status === 'OFF') {
+                    updateMemo(memo.id, { isDeleted: true });
+                  } else {
+                    updateMemo(memo.id, { status: 'OFF' });
+                  }
+                }}
+                onSwipeRight={() => {
+                  if (isTrashView) {
+                    updateMemo(memo.id, { isDeleted: false });
+                  } else if (memo.status === 'OFF') {
+                    updateMemo(memo.id, { status: memo.title ? 'PUBLISH' : 'DUMP' });
+                  }
+                }}
+              />
+            ))}
+
+            <div className={showInputCard ? 'h-[80px]' : 'h-2'} />
+          </div>
+        </div>
+
+        {/* Published panel — slides in from right */}
+        <div
+          className="absolute inset-0 overflow-y-auto will-change-transform"
+          style={{
+            transform: subTab === 'published' ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          <div className="max-w-2xl mx-auto">
+            {isHydrated && publishedMemos.length === 0 && (
+              <div className="px-5 py-14 text-center">
+                <p className={`text-sm ${dk ? 'text-white/30' : 'text-black/25'}`}>
+                  아직 Published 글이 없어요.
+                </p>
+                <p className={`mt-1.5 text-xs ${dk ? 'text-white/18' : 'text-black/18'}`}>
+                  제목이 있는 메모를 발행하면 여기에 표시됩니다.
+                </p>
+              </div>
+            )}
+            {isHydrated && publishedMemos.map((memo) => {
+              const preview = stripHtml(memo.text);
+              return (
+                <div
+                  key={memo.id}
+                  onClick={() => setZenMemo(memo)}
+                  className={`relative px-5 py-4 cursor-pointer transition-colors ${dk ? 'active:bg-white/[0.04]' : 'active:bg-black/[0.025]'}`}
+                >
+                  <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
+                    {memo.title}
+                  </p>
+                  {preview && (
+                    <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                      {preview}
+                    </p>
+                  )}
+                  <p className={`mt-2 text-[0.75em] ${dk ? 'text-white/35' : 'text-black/25'}`}>
+                    {formatTimestamp(memo.createdAt)}
+                  </p>
+                  <div className={`absolute bottom-0 left-5 right-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
+                </div>
+              );
+            })}
+            <div className="h-8" />
+          </div>
+        </div>
+
+      </div>
+
       {/* ── Floating glassmorphism input card ───────────────────────── */}
-      {viewMode === 'ALL' && (
+      {showInputCard && (
         <div
           className="absolute bottom-0 left-0 right-0"
           style={{
@@ -767,6 +894,18 @@ export default function MemoList() {
           </div>
         </div>
       )}
+
+      {/* ── Zen editor (full-screen, slide from right) ───────────────── */}
+      {zenMemo && (
+        <ZenEditor
+          memo={zenMemo}
+          onBack={() => setZenMemo(null)}
+          onSave={(title, body) => {
+            updateMemo(zenMemo.id, { title: title || null, text: body, status: 'PUBLISH' });
+          }}
+        />
+      )}
+
     </div>
   );
 }

@@ -4,6 +4,14 @@ export interface MemoItem {
   title: string | null;
   status: 'DUMP' | 'OFF' | 'PUBLISH';
   createdAt: number;
+  folderId: string | null;
+  isDeleted: boolean;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  createdAt: number;
 }
 
 export type FontFamily = 'sans' | 'serif' | 'mono';

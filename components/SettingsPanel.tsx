@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, STORAGE_KEY } from '@/lib/store';
 import type { FontFamily, FontSize } from '@/lib/types';
 
 const MAX_PX  = 1200;
@@ -34,11 +34,17 @@ async function compressImage(file: File): Promise<string> {
 }
 
 export default function SettingsPanel() {
-  const { state, updateSettings } = useStore();
+  const { state, updateSettings, importData } = useStore();
   const { settings } = state;
   const dk = settings.darkMode;
   const fileRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Export / Import state
+  const [exportText,  setExportText]  = useState('');
+  const [importText,  setImportText]  = useState('');
+  const [showImport,  setShowImport]  = useState(false);
+  const [importError, setImportError] = useState('');
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -60,6 +66,25 @@ export default function SettingsPanel() {
     if (/^#[0-9a-fA-F]{6}$/.test(v)) updateSettings({ bgColor: v });
   }
 
+  function handleExport() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const text = raw ?? JSON.stringify({ memos: state.memos, folders: state.folders, settings: state.settings }, null, 2);
+    setExportText(text);
+    setShowImport(false);
+    setImportError('');
+  }
+
+  function handleImport() {
+    setImportError('');
+    try {
+      importData(importText);
+      setImportText('');
+      setShowImport(false);
+    } catch {
+      setImportError('올바른 JSON 형식이 아닙니다. 다시 확인해 주세요.');
+    }
+  }
+
   const pill = 'px-3 py-1 text-xs rounded-full border transition-all duration-150 cursor-pointer';
   const active   = dk
     ? 'bg-white/90 text-neutral-900 border-white/90'
@@ -72,6 +97,13 @@ export default function SettingsPanel() {
   const panelCls  = dk
     ? 'border-b border-white/10 bg-neutral-900/90 backdrop-blur-md px-5 py-4'
     : 'border-b border-black/8 bg-white/85 backdrop-blur-md px-5 py-4';
+
+  const textareaCls = [
+    'w-full text-xs rounded-lg px-3 py-2.5 resize-none outline-none font-mono leading-relaxed',
+    dk
+      ? 'bg-white/5 border border-white/10 text-white/65 placeholder:text-white/22 focus:border-white/25'
+      : 'bg-black/[0.04] border border-black/10 text-black/62 placeholder:text-black/20 focus:border-black/25',
+  ].join(' ');
 
   return (
     <div className={panelCls}>
@@ -198,6 +230,77 @@ export default function SettingsPanel() {
             </div>
           </div>
         )}
+
+        {/* Divider */}
+        <div className={`border-t pt-1 ${dk ? 'border-white/[0.07]' : 'border-black/[0.05]'}`} />
+
+        {/* Data export / import */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-4">
+            <span className={labelCls}>데이터</span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleExport}
+                className={`${pill} ${exportText && !showImport ? active : inactive}`}
+              >
+                내보내기
+              </button>
+              <button
+                onClick={() => { setShowImport((v) => !v); setExportText(''); setImportError(''); }}
+                className={`${pill} ${showImport ? active : inactive}`}
+              >
+                가져오기
+              </button>
+            </div>
+          </div>
+
+          {/* Export result textarea */}
+          {exportText && !showImport && (
+            <textarea
+              readOnly
+              rows={5}
+              value={exportText}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              className={textareaCls}
+              spellCheck={false}
+            />
+          )}
+
+          {/* Import textarea + apply button */}
+          {showImport && (
+            <div className="flex flex-col gap-2">
+              <textarea
+                rows={5}
+                value={importText}
+                onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+                placeholder="내보내기로 복사한 JSON을 여기에 붙여넣으세요..."
+                className={textareaCls}
+                spellCheck={false}
+              />
+              {importError && (
+                <p className="text-xs text-red-500/80">{importError}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleImport}
+                  disabled={!importText.trim()}
+                  className={[
+                    pill,
+                    importText.trim() ? active : `${inactive} opacity-50 cursor-not-allowed`,
+                  ].join(' ')}
+                >
+                  적용하기
+                </button>
+                <button
+                  onClick={() => { setShowImport(false); setImportText(''); setImportError(''); }}
+                  className={`${pill} ${inactive}`}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
