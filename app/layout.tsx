@@ -45,9 +45,18 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* Explicit viewport — belt-and-suspenders alongside the Next.js viewport export,
+            in case Next.js 16 static generation omits the generated tag. */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+        />
+
         {/* Nanum Myeongjo — Korean serif web font.
             next/font/google only ships the latin subset for this font,
-            so we load it directly from Google Fonts to get Korean glyphs. */}
+            so we load it directly from Google Fonts to get Korean glyphs.
+            display=swap prevents FOIT; text renders in fallback font first
+            then swaps to Nanum without causing a size jump. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link

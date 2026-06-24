@@ -10,7 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: Georgia, ui-serif, serif;
+  --font-serif: "Nanum Myeongjo", Georgia, ui-serif, serif;
+}
+
+/*
+ * Prevent iOS Safari from auto-inflating text when the layout width is
+ * narrower than the viewport — the #1 cause of "looks big on mobile"
+ * even when viewport meta is set correctly. Tailwind Preflight sets this too,
+ * but we repeat it here so it's guaranteed even if the Preflight layer order
+ * shifts between dev and production builds.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -18,6 +30,9 @@ body {
   /* Suppress iOS native callout (link/text preview bubble) on long press.
      Safe to apply globally — our app uses a custom long-press gesture instead. */
   -webkit-touch-callout: none;
+  /* Disable double-tap-to-zoom on mobile — prevents viewport scale jumps
+     that make content appear temporarily large. */
+  touch-action: manipulation;
 }
 
 * {
