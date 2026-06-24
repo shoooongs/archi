@@ -4,12 +4,22 @@ import { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import type { MemoItem } from '@/lib/types';
 
-// ─── Icon ────────────────────────────────────────────────────────────────────
+// ─── Icons ───────────────────────────────────────────────────────────────────
 
 function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function ExportIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   );
 }
@@ -40,6 +50,52 @@ function getAncestorBlockTag(editor: HTMLDivElement | null): string {
   return 'p';
 }
 
+// ─── HTML → Markdown ─────────────────────────────────────────────────────────
+
+function nodeToMd(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+  const el = node as HTMLElement;
+  const tag = el.tagName.toLowerCase();
+  const inner = () => Array.from(el.childNodes).map(nodeToMd).join('');
+
+  switch (tag) {
+    case 'h1': return `# ${inner().trim()}\n\n`;
+    case 'h2': return `## ${inner().trim()}\n\n`;
+    case 'h3': return `### ${inner().trim()}\n\n`;
+    case 'hr': return `---\n\n`;
+    case 'br': return '\n';
+    case 'blockquote': return `> ${inner().trim()}\n\n`;
+    case 'p': { const c = inner(); return c.trim() ? `${c}\n\n` : ''; }
+    case 'b':
+    case 'strong': return `**${inner()}**`;
+    case 'u': return `<u>${inner()}</u>`;
+    case 'i':
+    case 'em': return `*${inner()}*`;
+    case 'ul':
+      return Array.from(el.children).map(li => `- ${li.textContent?.trim() ?? ''}\n`).join('') + '\n';
+    case 'ol':
+      return Array.from(el.children).map((li, i) => `${i + 1}. ${li.textContent?.trim() ?? ''}\n`).join('') + '\n';
+    case 'li': return inner();
+    default:   return inner();
+  }
+}
+
+function htmlToMarkdown(html: string): string {
+  if (typeof document === 'undefined') return html.replace(/<[^>]+>/g, '');
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return Array.from(div.childNodes).map(nodeToMd).join('').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function htmlToPlainText(html: string): string {
+  if (typeof document === 'undefined') return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // ─── Toolbar config ───────────────────────────────────────────────────────────
 
 interface ToolbarItem {
@@ -47,7 +103,7 @@ interface ToolbarItem {
   label: string;
   tag: string;
   title: string;
-  cmd?: string; // execCommand for inline formats (bold, underline, etc.)
+  cmd?: string;
 }
 
 const TOOLBAR: ToolbarItem[] = [
@@ -59,9 +115,9 @@ const TOOLBAR: ToolbarItem[] = [
   { id: 'bq',   label: '❝',  tag: 'blockquote', title: '인용구' },
   { id: 'hr',   label: '—',  tag: 'hr',         title: '구분선' },
   { id: 'sep2', label: '|',  tag: '',            title: ''       },
-  { id: 'bold', label: 'B',  tag: '',            title: '굵게',   cmd: 'bold'                  },
-  { id: 'ul',   label: 'U',  tag: '',            title: '밑줄',   cmd: 'underline'             },
-  { id: 'list', label: '•',  tag: '',            title: '목록',   cmd: 'insertUnorderedList'   },
+  { id: 'bold', label: 'B',  tag: '',            title: '굵게',   cmd: 'bold'                },
+  { id: 'ul',   label: 'U',  tag: '',            title: '밑줄',   cmd: 'underline'           },
+  { id: 'list', label: '•',  tag: '',            title: '목록',   cmd: 'insertUnorderedList' },
 ];
 
 // ─── ZenEditor ───────────────────────────────────────────────────────────────
@@ -84,15 +140,20 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   const dk       = state.settings.darkMode;
   const fontSize = FONT_SIZE_MAP[state.settings.fontSize] ?? '0.875rem';
 
-  const [title,       setTitle]       = useState(memo.title ?? '');
-  const [isDirty,     setIsDirty]     = useState(false);
-  const [entered,     setEntered]     = useState(false);
-  const [exiting,     setExiting]     = useState(false);
-  const [activeBlock, setActiveBlock] = useState<string>('p');
+  const [title,          setTitle]          = useState(memo.title ?? '');
+  const [isDirty,        setIsDirty]        = useState(false);
+  const [entered,        setEntered]        = useState(false);
+  const [exiting,        setExiting]        = useState(false);
+  const [activeBlock,    setActiveBlock]    = useState<string>('p');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [toastMsg,       setToastMsg]       = useState<string | null>(null);
+  const [toastVisible,   setToastVisible]   = useState(false);
 
-  const editorRef     = useRef<HTMLDivElement>(null);
-  const savedHtmlRef  = useRef(toHtml(memo.text));
-  const savedTitleRef = useRef(memo.title ?? '');
+  const editorRef      = useRef<HTMLDivElement>(null);
+  const savedHtmlRef   = useRef(toHtml(memo.text));
+  const savedTitleRef  = useRef(memo.title ?? '');
+  const exportMenuRef  = useRef<HTMLDivElement>(null);
+  const toastTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Slide-in from right
   useEffect(() => {
@@ -116,6 +177,31 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     document.addEventListener('selectionchange', onSelChange);
     return () => document.removeEventListener('selectionchange', onSelChange);
   }, []);
+
+  // Close export menu on outside click
+  useEffect(() => {
+    if (!showExportMenu) return;
+    function onPointerDown(e: PointerEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [showExportMenu]);
+
+  function showToast(msg: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMsg(msg);
+    setToastVisible(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setToastVisible(true));
+    });
+    toastTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+      setTimeout(() => setToastMsg(null), 300);
+    }, 2000);
+  }
 
   function recomputeDirty(overrideTitle?: string) {
     const html = editorRef.current?.innerHTML ?? '';
@@ -144,7 +230,6 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     const el = editorRef.current;
     if (!el) return;
 
-    // Preserve selection across focus call
     const sel   = window.getSelection();
     const range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
 
@@ -156,13 +241,11 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
     }
 
     if (item.cmd) {
-      // Inline formats: bold, underline, insertUnorderedList
       document.execCommand(item.cmd, false);
     } else if (item.tag === 'hr') {
       document.execCommand('insertHorizontalRule', false);
     } else {
       const current = getAncestorBlockTag(el);
-      // Toggle: if already this block type (except P), revert to P
       const target = current === item.tag && item.tag !== 'p' ? 'p' : item.tag;
       document.execCommand('formatBlock', false, target);
     }
@@ -173,6 +256,57 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
       recomputeDirty();
     });
   }
+
+  // ─── Export actions ──────────────────────────────────────────────────────
+
+  function handleCopyText() {
+    setShowExportMenu(false);
+    const html = editorRef.current?.innerHTML ?? '';
+    const plain = htmlToPlainText(html);
+    if (!plain) return;
+    navigator.clipboard.writeText(plain).then(() => {
+      showToast('클립보드에 복사되었습니다.');
+    }).catch(() => {
+      // Fallback for environments that block clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = plain;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('클립보드에 복사되었습니다.');
+    });
+  }
+
+  function handleSaveMd() {
+    setShowExportMenu(false);
+    const html = editorRef.current?.innerHTML ?? '';
+    const md   = htmlToMarkdown(html);
+    const safeTitle = (title.trim() || '메모').replace(/[/\\:*?"<>|]/g, '_');
+    const blob = new Blob([`# ${title.trim() || '메모'}\n\n${md}`], { type: 'text/markdown;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${safeTitle}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('마크다운 파일이 저장되었습니다.');
+  }
+
+  function handleEmail() {
+    setShowExportMenu(false);
+    const html  = editorRef.current?.innerHTML ?? '';
+    const plain = htmlToPlainText(html);
+    const subject = encodeURIComponent(`[Archi] ${title.trim() || '메모'}`);
+    const body    = encodeURIComponent(plain);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  // ─── Styles ──────────────────────────────────────────────────────────────
 
   const transform = exiting ? 'translateX(100%)' : entered ? 'translateX(0)' : 'translateX(100%)';
   const textBase  = dk ? 'text-white/72' : 'text-black/68';
@@ -187,12 +321,18 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
       : 'text-black/32 hover:text-black/65 hover:bg-black/5 active:bg-black/10'}`;
   }
 
+  const menuItemCls = `flex items-center gap-2.5 w-full px-3.5 py-2.5 text-left text-xs transition-colors ${
+    dk
+      ? 'text-white/72 hover:bg-white/8 active:bg-white/12'
+      : 'text-black/65 hover:bg-black/5 active:bg-black/8'
+  }`;
+
   return (
     <div
       className={`fixed inset-0 z-[80] flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
       style={{ transform, transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
     >
-      {/* ── Top bar — fixed, with safe-area-inset-top ────────────────────── */}
+      {/* ── Top bar ───────────────────────────────────────────────────────── */}
       <div
         className={`flex-shrink-0 border-b ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`}
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
@@ -214,21 +354,62 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
             {isDirty ? '수정 중' : '저장됨'}
           </span>
 
-          <button
-            onClick={handleSave}
-            disabled={!isDirty}
-            className={`p-2 rounded-xl text-sm font-semibold transition-all ${
-              isDirty
-                ? dk ? 'text-white/80 hover:text-white hover:bg-white/8' : 'text-black/70 hover:text-black hover:bg-black/6'
-                : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
-            }`}
-          >
-            저장
-          </button>
+          {/* Right actions */}
+          <div className="flex items-center gap-0.5">
+            {/* Export button + dropdown */}
+            <div ref={exportMenuRef} className="relative">
+              <button
+                onClick={() => setShowExportMenu(v => !v)}
+                title="내보내기"
+                className={`p-2 rounded-xl transition-all ${
+                  showExportMenu
+                    ? dk ? 'text-white/80 bg-white/8' : 'text-black/70 bg-black/6'
+                    : dk ? 'text-white/30 hover:text-white/62 hover:bg-white/8' : 'text-black/28 hover:text-black/58 hover:bg-black/6'
+                }`}
+              >
+                <ExportIcon />
+              </button>
+
+              {showExportMenu && (
+                <div className={`absolute right-0 top-full mt-1.5 z-50 min-w-[148px] rounded-xl overflow-hidden shadow-lg ${
+                  dk
+                    ? 'bg-neutral-900 border border-white/[0.09]'
+                    : 'bg-white border border-black/[0.08]'
+                }`}>
+                  <button onClick={handleCopyText} className={menuItemCls}>
+                    <span className="text-[11px] opacity-60">📋</span>
+                    <span>텍스트 복사</span>
+                  </button>
+                  <div className={`mx-3 border-t ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`} />
+                  <button onClick={handleSaveMd} className={menuItemCls}>
+                    <span className="text-[11px] opacity-60">📄</span>
+                    <span>MD 파일 저장</span>
+                  </button>
+                  <div className={`mx-3 border-t ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`} />
+                  <button onClick={handleEmail} className={menuItemCls}>
+                    <span className="text-[11px] opacity-60">✉️</span>
+                    <span>이메일로 보내기</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleSave}
+              disabled={!isDirty}
+              className={`p-2 rounded-xl text-sm font-semibold transition-all ${
+                isDirty
+                  ? dk ? 'text-white/80 hover:text-white hover:bg-white/8' : 'text-black/70 hover:text-black hover:bg-black/6'
+                  : dk ? 'text-white/16 cursor-not-allowed' : 'text-black/14 cursor-not-allowed'
+              }`}
+            >
+              저장
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Formatting toolbar — fixed below top bar ─────────────────────── */}
+      {/* ── Formatting toolbar ────────────────────────────────────────────── */}
       <div className={`flex-shrink-0 flex items-center px-2.5 py-1 border-b overflow-x-auto gap-0.5 ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`}>
         {TOOLBAR.map((item) => {
           const { id, label, tag, title: tip, cmd } = item;
@@ -256,14 +437,12 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
         })}
       </div>
 
-      {/* ── Editor content — scrollable ──────────────────────────────────── */}
+      {/* ── Editor content ────────────────────────────────────────────────── */}
       <div
         className="flex-1 overflow-y-auto"
         style={{ fontSize, paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="max-w-2xl mx-auto px-5 pt-5 pb-16">
-
-          {/* Title — 1.4em relative to editor fontSize */}
           <input
             type="text"
             value={title}
@@ -280,7 +459,6 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
 
           <div className={`mb-4 border-t ${dk ? 'border-white/[0.07]' : 'border-black/[0.06]'}`} />
 
-          {/* contentEditable body — inherits fontSize from parent */}
           <div
             ref={editorRef}
             contentEditable
@@ -293,9 +471,23 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
               dk ? `${textBase} rich-editor-dk` : textBase,
             ].join(' ')}
           />
-
         </div>
       </div>
+
+      {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      {toastMsg && (
+        <div
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg pointer-events-none transition-all duration-300 ${
+            dk ? 'bg-white/10 text-white/88 border border-white/[0.1] backdrop-blur-md' : 'bg-black/[0.82] text-white/90 backdrop-blur-md'
+          }`}
+          style={{
+            opacity: toastVisible ? 1 : 0,
+            transform: `translateX(-50%) translateY(${toastVisible ? '0px' : '8px'})`,
+          }}
+        >
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }
