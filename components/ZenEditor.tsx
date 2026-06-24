@@ -262,7 +262,8 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
   function handleCopyText() {
     setShowExportMenu(false);
     const html = editorRef.current?.innerHTML ?? '';
-    const plain = htmlToPlainText(html);
+    const body = htmlToPlainText(html);
+    const plain = [title.trim(), body].filter(Boolean).join('\n\n');
     if (!plain) return;
     navigator.clipboard.writeText(plain).then(() => {
       showToast('클립보드에 복사되었습니다.');
@@ -329,7 +330,7 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[80] flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
+      className={`fixed inset-x-0 top-0 h-dvh z-[80] flex flex-col overflow-hidden ${dk ? 'bg-neutral-950' : 'bg-[#fafaf8]'}`}
       style={{ transform, transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
     >
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
@@ -376,20 +377,11 @@ export default function ZenEditor({ memo, onBack, onSave }: ZenEditorProps) {
                     ? 'bg-neutral-900 border border-white/[0.09]'
                     : 'bg-white border border-black/[0.08]'
                 }`}>
-                  <button onClick={handleCopyText} className={menuItemCls}>
-                    <span className="text-[11px] opacity-60">📋</span>
-                    <span>텍스트 복사</span>
-                  </button>
+                  <button onClick={handleCopyText} className={menuItemCls}>텍스트 복사</button>
                   <div className={`mx-3 border-t ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`} />
-                  <button onClick={handleSaveMd} className={menuItemCls}>
-                    <span className="text-[11px] opacity-60">📄</span>
-                    <span>MD 파일 저장</span>
-                  </button>
+                  <button onClick={handleSaveMd} className={menuItemCls}>MD 파일 저장</button>
                   <div className={`mx-3 border-t ${dk ? 'border-white/[0.06]' : 'border-black/[0.05]'}`} />
-                  <button onClick={handleEmail} className={menuItemCls}>
-                    <span className="text-[11px] opacity-60">✉️</span>
-                    <span>이메일로 보내기</span>
-                  </button>
+                  <button onClick={handleEmail} className={menuItemCls}>이메일로 보내기</button>
                 </div>
               )}
             </div>
