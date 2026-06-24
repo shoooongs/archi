@@ -41,13 +41,11 @@ function DocIcon() {
   );
 }
 
-// Timeline icon — shown in Published view (tap to go back to Timeline)
+// Speech bubble icon — shown in Published view (tap to go back to Timeline)
 function TimelineIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4"  width="18" height="4" rx="1" />
-      <rect x="3" y="10" width="18" height="4" rx="1" />
-      <rect x="3" y="16" width="18" height="4" rx="1" />
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -360,7 +358,7 @@ function MemoRow({
       {/* Swipeable outer layer */}
       <div
         ref={contentRef}
-        className={['px-3 will-change-transform', isEditing ? 'py-3' : 'py-1.5 cursor-text'].join(' ')}
+        className={['px-5 will-change-transform', isEditing ? 'py-4' : 'py-4 cursor-text'].join(' ')}
         style={{ touchAction: 'pan-y' }}
         onPointerDown={isEditing ? undefined : handlePointerDown}
         onPointerMove={isEditing ? undefined : handlePointerMove}
@@ -402,44 +400,39 @@ function MemoRow({
               />
             </div>
 
+          ) : memo.status === 'PUBLISH' ? (
+            // ── Published ──
+            <>
+              <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/90'}`}>
+                {memo.title}
+              </p>
+              <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
+              </p>
+            </>
+
           ) : (
-            // ── 말풍선 bubble ──────────────────────────────────────────────
-            <div className={[
-              'rounded-2xl rounded-tl-sm px-4 py-3',
-              dk
-                ? 'bg-white/[0.08]'
-                : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.04)]',
-            ].join(' ')}>
-              {memo.status === 'PUBLISH' ? (
-                <>
-                  <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/90' : 'text-black/88'}`}>
-                    {memo.title}
-                  </p>
-                  <p className={`mt-1.5 leading-relaxed break-words line-clamp-5 ${dk ? 'text-white/60' : 'text-black/55'}`}>
-                    {isMounted ? stripHtml(memo.text) : ''}
-                  </p>
-                </>
-              ) : (
-                <>
-                  {memo.title && (
-                    <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
-                      {memo.title}
-                    </p>
-                  )}
-                  <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
-                    {isMounted ? stripHtml(memo.text) : ''}
-                  </p>
-                </>
+            // ── DUMP / OFF ──
+            <>
+              {memo.title && (
+                <p className={`font-semibold leading-snug tracking-tight line-clamp-2 ${dk ? 'text-white/75' : 'text-black/72'}`}>
+                  {memo.title}
+                </p>
               )}
-            </div>
+              <p className={`leading-relaxed break-words line-clamp-5 ${memo.title ? 'mt-1' : ''} ${dk ? 'text-white/80' : 'text-black/75'}`}>
+                {isMounted ? stripHtml(memo.text) : ''}
+              </p>
+            </>
           )}
 
-          {/* Timestamp below bubble */}
-          <p className={`mt-1.5 text-[0.7em] ${isEditing ? 'mt-2' : 'pl-1'} ${dk ? 'text-white/28' : 'text-black/22'}`}>
+          <p className={`mt-2 text-[0.75em] ${dk ? 'text-white/35' : 'text-black/25'}`}>
             {isMounted ? formatTimestamp(memo.createdAt) : ''}
           </p>
         </div>
       </div>
+
+      {/* Padded separator line */}
+      <div className={`mx-5 h-px ${dk ? 'bg-white/[0.08]' : 'bg-black/[0.06]'}`} />
     </div>
   );
 }
